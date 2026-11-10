@@ -6,7 +6,7 @@
   <title>ImgTools - 本機端純前端圖片處理工具</title>
   
   <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   
   <!-- HEIC2ANY: 用於 Apple HEIC 格式本機解碼 -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
@@ -34,4 +34,621 @@
     .tool-card { transition: all 0.2s ease-in-out; }
     .tool-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #f1
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .hide { display: none !important; }
+    .cropper-container-wrapper { max-width: 100%; max-height: 60vh; }
+    /* 修正輸入框變成小方塊的問題 */
+    input[type="number"] { min-width: 80px; }
+  </style>
+</head>
+<body class="text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- 頂部 Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-2 cursor-pointer" onclick="goHome()">
+        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-lg">I</div>
+        <span class="text-xl font-bold text-slate-800">ImgTools</span>
+        <span class="ml-2 px-2 py-0.5 bg-emerald-50 text-emerald-600 text-xs font-semibold rounded-full border border-emerald-200">100% 本機運行</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 視圖 1：首頁工具網格 -->
+  <main id="view-home" class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 py-10 sm:py-16">
+    <div class="text-center max-w-3xl mx-auto space-y-4 mb-12">
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+        可批量編輯圖片的 所有工具
+      </h1>
+      <p class="text-slate-500 text-base sm:text-lg">
+        你的純前端本機圖片編輯器就在這裡，而且永遠免費！<br>圖片不會上傳至任何伺服器，完全保障您的隱私安全。
+      </p>
+    </div>
+
+    <!-- 過濾器 -->
+    <div class="flex flex-wrap justify-center gap-2 mb-10" id="filter-container">
+      <button class="filter-btn active px-5 py-2 rounded-full text-sm font-semibold bg-slate-800 text-white shadow-md transition" onclick="renderGrid('all')">全部</button>
+      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" onclick="renderGrid('optimize')">最佳化</button>
+      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" onclick="renderGrid('edit')">編輯</button>
+      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" onclick="renderGrid('convert')">轉換</button>
+    </div>
+
+    <!-- 工具網格 -->
+    <div id="tools-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+      <!-- JavaScript 動態注入工具卡片 -->
+    </div>
+  </main>
+
+  <!-- 視圖 2：工具工作區 (預設隱藏) -->
+  <main id="view-workspace" class="hide flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-8">
+    <button onclick="goHome()" class="mb-6 flex items-center space-x-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+      <span>返回所有工具</span>
+    </button>
+
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+      
+      <!-- 左側/上方：上傳與設定區 -->
+      <div class="w-full md:w-80 bg-slate-50 border-r border-slate-200 p-6 flex flex-col h-full">
+        <div class="flex items-center space-x-3 mb-6">
+          <div id="ws-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm"></div>
+          <div>
+            <h2 id="ws-title" class="text-lg font-bold text-slate-800 leading-tight">工具名稱</h2>
+            <p id="ws-desc" class="text-xs text-slate-500 mt-0.5">工具描述</p>
+          </div>
+        </div>
+
+        <!-- 檔案上傳區 -->
+        <div id="upload-zone" class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:bg-slate-100 transition cursor-pointer mb-6 group relative">
+          <input type="file" id="file-input" accept="image/*,.heic,.heif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+          <div id="upload-content">
+            <svg class="w-8 h-8 text-slate-400 mx-auto mb-2 group-hover:text-blue-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            <p class="text-sm font-semibold text-slate-700">選擇圖片檔案</p>
+            <p class="text-xs text-slate-400 mt-1">支援 HEIC, JPG, PNG 等</p>
+          </div>
+          <!-- 載入中狀態 (隱藏) -->
+          <div id="upload-loading" class="hide flex flex-col items-center justify-center h-full">
+            <svg class="animate-spin mx-auto h-6 w-6 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p id="loading-text" class="text-sm font-semibold text-blue-600">處理中...</p>
+          </div>
+        </div>
+
+        <!-- 動態設定面板 -->
+        <div id="settings-panel" class="flex-grow space-y-4 opacity-50 pointer-events-none transition-opacity duration-300">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 pb-2 border-b border-slate-200">工具設定</div>
+          
+          <!-- 轉換設定 -->
+          <div id="setting-convert" class="hide space-y-3">
+            <label class="block text-sm font-semibold text-slate-700">選擇輸出格式</label>
+            <select id="format-select" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none">
+              <option value="image/jpeg">JPEG (.jpg)</option>
+              <option value="image/png">PNG (.png)</option>
+              <option value="image/webp">WEBP (.webp)</option>
+              <option value="image/bmp">BMP (.bmp)</option>
+            </select>
+          </div>
+
+          <!-- 壓縮設定 -->
+          <div id="setting-compress" class="hide space-y-3">
+            <label class="block text-sm font-semibold text-slate-700">圖片品質 (壓縮率)</label>
+            <input type="range" id="compress-slider" min="0.1" max="1" step="0.05" value="0.7" class="w-full accent-green-600">
+            <div class="text-xs text-slate-500 text-right mt-1" id="compress-val">70%</div>
+            <p class="text-[10px] text-slate-400 leading-tight mt-2">提示：僅對 JPG 與 WEBP 有效。數值越小檔案越小，但畫質越低。</p>
+          </div>
+
+          <!-- 裁切設定 -->
+          <div id="setting-crop" class="hide space-y-3">
+            <label class="block text-sm font-semibold text-slate-700">裁切比例</label>
+            <select id="crop-ratio" onchange="changeCropRatio(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none mb-3">
+              <option value="free">自由拖曳</option>
+              <option value="1">1:1 (正方形)</option>
+              <option value="1.33333">4:3 (標準)</option>
+              <option value="1.77777">16:9 (寬螢幕)</option>
+            </select>
+            <button onclick="applyCrop()" class="w-full py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-bold rounded-lg transition mt-2">套用裁切尺寸</button>
+          </div>
+
+          <!-- 刪除背景 (AI) 設定 -->
+          <div id="setting-removebg" class="hide space-y-3">
+            <p class="text-xs text-slate-600 mb-2">運用瀏覽器內建 AI 模型自動去背。首次執行會自動下載模型快取。</p>
+            <button onclick="applyRemoveBg()" class="w-full py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-bold rounded-lg transition mt-2 flex items-center justify-center space-x-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+              <span>開始 AI 自動去背</span>
+            </button>
+          </div>
+
+          <!-- 提升圖片質量設定 -->
+          <div id="setting-upscale" class="hide space-y-3">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">高解析度放大倍率</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="applyUpscale(2)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">2x</button>
+              <button onclick="applyUpscale(4)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">4x</button>
+              <button onclick="applyUpscale(8)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">8x</button>
+            </div>
+          </div>
+
+          <!-- 調整大小設定 -->
+          <div id="setting-resize" class="hide space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">寬度 (px)</label>
+                <input type="number" id="resize-w" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">高度 (px)</label>
+                <input type="number" id="resize-h" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
+              </div>
+            </div>
+            <label class="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+              <input type="checkbox" id="resize-aspect" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+              <span>保持長寬比例</span>
+            </label>
+            <button onclick="applyResize()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition mt-2">套用尺寸</button>
+          </div>
+
+          <!-- 旋轉設定 -->
+          <div id="setting-rotate" class="hide space-y-3">
+            <label class="block text-sm font-semibold text-slate-700 mb-2">旋轉與翻轉</label>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="applyRotate(-90)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                <span>左旋 90°</span>
+              </button>
+              <button onclick="applyRotate(90)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"></path></svg>
+                <span>右旋 90°</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 浮水印設定 -->
+          <div id="setting-watermark" class="hide space-y-3">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1">文字浮水印</label>
+              <input type="text" id="wm-text" placeholder="輸入浮水印內容" value="ImgTools" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">顏色</label>
+                <input type="color" id="wm-color" value="#ffffff" class="w-full h-8 rounded-lg cursor-pointer">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">透明度</label>
+                <input type="range" id="wm-alpha" min="0.1" max="1" step="0.1" value="0.7" class="w-full mt-2">
+              </div>
+            </div>
+            <button onclick="applyWatermark()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition mt-2">套用浮水印</button>
+          </div>
+
+        </div>
+        
+        <!-- 操作按鈕區 -->
+        <div class="mt-6 pt-4 border-t border-slate-200">
+          <button id="btn-download" onclick="downloadImage()" disabled class="w-full py-3.5 px-4 bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span>處理並下載</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 右側：畫布/預覽區 -->
+      <div class="flex-grow bg-slate-800 p-4 md:p-8 flex items-center justify-center relative overflow-hidden min-h-[400px]">
+        <div id="preview-placeholder" class="text-center text-slate-500 flex flex-col items-center">
+          <svg class="w-16 h-16 mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <p>尚未載入圖片，請從左側上傳</p>
+        </div>
+        
+        <!-- 畫布預覽 (用於一般工具) -->
+        <canvas id="main-canvas" class="hide max-w-full max-h-full object-contain shadow-2xl rounded" style="background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAACVJREFUKFNjZCASMDKgAnv37v3/n4GQgCpGBhoG1NGAOmLQHkIAAIc3H/F7L41zAAAAAElFTkSuQmCC'); background-repeat: repeat;"></canvas>
+        
+        <!-- 圖片元素 (專用於 Cropper.js 裁切) -->
+        <div id="cropper-container" class="hide cropper-container-wrapper w-full h-full flex items-center justify-center">
+          <img id="crop-image" class="max-w-full max-h-full" src="" alt="Cropper Image">
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-slate-200 mt-auto py-6 text-center text-sm text-slate-500">
+    <div class="max-w-7xl mx-auto px-4">
+      ImgTools - 基於 HTML5 Canvas, Cropper.js 與 AI WebGL 的純本機端圖片處理工具。無需伺服器，無隱私風險。
+    </div>
+  </footer>
+
+  <!-- 核心 JavaScript：全局防護架構 -->
+  <script>
+    // 1. 資料定義
+    const toolsData = [
+      { id: 'convert', title: '格式轉換', desc: '輕鬆轉換 PNG, PSD, SVG, WEBP, HEIC 等格式至 JPG / PNG。', category: 'convert', color: 'bg-yellow-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>' },
+      { id: 'compress', title: '壓縮圖片', desc: '降低檔案大小同時保持視覺品質', category: 'optimize', color: 'bg-green-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>' },
+      { id: 'crop', title: '裁剪圖片', desc: '框選特定區域進行自由或等比裁切', category: 'edit', color: 'bg-blue-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>' },
+      { id: 'resize', title: '調整大小', desc: '按自訂像素尺寸縮放，不失真', category: 'edit', color: 'bg-blue-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>' },
+      { id: 'removebg', title: '刪除背景', desc: 'AI自動去背，保留主體透明背景', category: 'optimize', color: 'bg-emerald-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>' },
+      { id: 'upscale', title: '提升圖片質量', desc: '以高解析度放大圖像，保持高視覺品質', category: 'optimize', color: 'bg-emerald-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>' },
+      { id: 'rotate', title: '旋轉圖片', desc: '90度無損旋轉您的照片', category: 'edit', color: 'bg-cyan-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>' },
+      { id: 'watermark', title: '加入浮水印', desc: '快速為圖片加上文字保護標記', category: 'edit', color: 'bg-indigo-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>' }
+    ];
+
+    // 2. 狀態管理
+    window.appState = {
+      originalImage: null,
+      activeTool: null,
+      cropperInstance: null
+    };
+
+    const canvas = document.getElementById('main-canvas');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+
+    // 3. 核心流程函數
+    window.renderGrid = function(filter = 'all') {
+      const gridEl = document.getElementById('tools-grid');
+      if(!gridEl) return;
+      gridEl.innerHTML = '';
+      toolsData.forEach(tool => {
+        if (filter !== 'all' && tool.category !== filter) return;
+        const card = document.createElement('div');
+        card.className = 'tool-card bg-white rounded-2xl p-5 border border-slate-200 cursor-pointer relative';
+        card.onclick = () => openWorkspace(tool.id);
+        card.innerHTML = `
+          <div class="w-12 h-12 rounded-xl ${tool.color} flex items-center justify-center text-white mb-4">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${tool.icon}</svg>
+          </div>
+          <h3 class="font-bold text-slate-800 text-lg mb-1">${tool.title}</h3>
+          <p class="text-xs text-slate-500 leading-relaxed">${tool.desc}</p>
+        `;
+        gridEl.appendChild(card);
+      });
+      
+      // 更新過濾器按鈕樣式
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('bg-slate-800', 'text-white');
+        b.classList.add('bg-white', 'text-slate-600');
+      });
+      const activeBtn = document.querySelector(`.filter-btn[onclick="renderGrid('${filter}')"]`);
+      if(activeBtn) {
+        activeBtn.classList.add('bg-slate-800', 'text-white');
+        activeBtn.classList.remove('bg-white', 'text-slate-600');
+      }
+    };
+
+    window.goHome = function() {
+      document.getElementById('view-workspace').classList.add('hide');
+      document.getElementById('view-home').classList.remove('hide');
+      resetWorkspace();
+    };
+
+    window.openWorkspace = function(toolId) {
+      const tool = toolsData.find(t => t.id === toolId);
+      if(!tool) return;
+      appState.activeTool = tool;
+      
+      document.getElementById('view-home').classList.add('hide');
+      document.getElementById('view-workspace').classList.remove('hide');
+      
+      document.getElementById('ws-title').textContent = tool.title;
+      document.getElementById('ws-desc').textContent = tool.desc;
+      const iconEl = document.getElementById('ws-icon');
+      iconEl.className = `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${tool.color}`;
+      iconEl.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${tool.icon}</svg>`;
+      
+      document.querySelectorAll('#settings-panel > div[id^="setting-"]').forEach(el => el.classList.add('hide'));
+      const targetSetting = document.getElementById(`setting-${tool.id}`);
+      if(targetSetting) targetSetting.classList.remove('hide');
+
+      if (appState.originalImage) setupToolUI();
+    };
+
+    function resetWorkspace() {
+      appState.originalImage = null;
+      canvas.classList.add('hide');
+      document.getElementById('cropper-container').classList.add('hide');
+      document.getElementById('preview-placeholder').classList.remove('hide');
+      document.getElementById('settings-panel').classList.add('opacity-50', 'pointer-events-none');
+      document.getElementById('btn-download').disabled = true;
+      document.getElementById('file-input').value = '';
+      if(appState.cropperInstance) { 
+        appState.cropperInstance.destroy(); 
+        appState.cropperInstance = null; 
+      }
+    }
+
+    function setLoading(isLoading, text = "處理中...") {
+      const uploadContent = document.getElementById('upload-content');
+      const uploadLoading = document.getElementById('upload-loading');
+      document.getElementById('loading-text').textContent = text;
+      
+      if (isLoading) {
+        uploadContent.classList.add('hide');
+        uploadLoading.classList.remove('hide');
+        document.getElementById('settings-panel').classList.add('opacity-50', 'pointer-events-none');
+      } else {
+        uploadLoading.classList.add('hide');
+        uploadContent.classList.remove('hide');
+        document.getElementById('settings-panel').classList.remove('opacity-50', 'pointer-events-none');
+      }
+    }
+
+    function initCanvas(img, width = img.width, height = img.height) {
+      canvas.width = width;
+      canvas.height = height;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, width, height);
+    }
+
+    function setupToolUI() {
+      if (!appState.originalImage) return;
+      if (appState.cropperInstance) {
+        appState.cropperInstance.destroy();
+        appState.cropperInstance = null;
+      }
+
+      if (appState.activeTool.id === 'crop') {
+        canvas.classList.add('hide');
+        const cropContainer = document.getElementById('cropper-container');
+        const cropImg = document.getElementById('crop-image');
+        
+        cropContainer.classList.remove('hide');
+        cropImg.src = appState.originalImage.src;
+        
+        appState.cropperInstance = new Cropper(cropImg, {
+          viewMode: 2,
+          background: false,
+          autoCropArea: 0.8
+        });
+      } else {
+        document.getElementById('cropper-container').classList.add('hide');
+        canvas.classList.remove('hide');
+        initCanvas(appState.originalImage);
+
+        if (appState.activeTool.id === 'resize') {
+          document.getElementById('resize-w').value = appState.originalImage.width;
+          document.getElementById('resize-h').value = appState.originalImage.height;
+        }
+      }
+    }
+
+    // --- 4. 綁定事件與工具函數 ---
+    
+    // 初始化網格
+    renderGrid();
+
+    // 檔案上傳
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        setLoading(true, "讀取圖片中...");
+
+        try {
+          let imageBlob = file;
+          const fileName = file.name.toLowerCase();
+          if (file.type === 'image/heic' || file.type === 'image/heif' || fileName.endsWith('.heic')) {
+            if (typeof heic2any !== 'undefined') {
+              const convertedBlob = await heic2any({ blob: file, toType: "image/png" });
+              imageBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+            }
+          }
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              appState.originalImage = img;
+              document.getElementById('preview-placeholder').classList.add('hide');
+              document.getElementById('btn-download').disabled = false;
+              setupToolUI();
+              setLoading(false);
+            };
+            img.src = event.target.result;
+          };
+          reader.readAsDataURL(imageBlob);
+        } catch (error) {
+          console.error("錯誤:", error);
+          alert('圖片讀取錯誤：' + error.message);
+          setLoading(false);
+        }
+      });
+    }
+
+    // 壓縮
+    document.getElementById('compress-slider').addEventListener('input', (e) => {
+      document.getElementById('compress-val').textContent = Math.round(e.target.value * 100) + '%';
+    });
+
+    // 裁切
+    window.changeCropRatio = function(val) {
+      if (appState.cropperInstance) {
+        appState.cropperInstance.setAspectRatio(val === 'free' ? NaN : parseFloat(val));
+      }
+    };
+    
+    window.applyCrop = function() {
+      if (!appState.cropperInstance) return;
+      const croppedCanvas = appState.cropperInstance.getCroppedCanvas();
+      const newImg = new Image();
+      newImg.onload = () => {
+        appState.originalImage = newImg;
+        alert("✅ 裁切完成！請點擊「處理並下載」。");
+      };
+      newImg.src = croppedCanvas.toDataURL('image/png');
+    };
+
+    // 縮放 (保持比例連動)
+    const resizeW = document.getElementById('resize-w');
+    const resizeH = document.getElementById('resize-h');
+    const aspectBox = document.getElementById('resize-aspect');
+    
+    if (resizeW && resizeH && aspectBox) {
+      resizeW.addEventListener('input', (e) => {
+        if(!appState.originalImage || !aspectBox.checked) return;
+        const ratio = appState.originalImage.height / appState.originalImage.width;
+        resizeH.value = Math.round(e.target.value * ratio);
+      });
+      resizeH.addEventListener('input', (e) => {
+        if(!appState.originalImage || !aspectBox.checked) return;
+        const ratio = appState.originalImage.width / appState.originalImage.height;
+        resizeW.value = Math.round(e.target.value * ratio);
+      });
+    }
+
+    window.applyResize = function() {
+      if(!appState.originalImage) return alert('請先上傳圖片');
+      const w = parseInt(resizeW.value);
+      const h = parseInt(resizeH.value);
+      if(w > 0 && h > 0) {
+        initCanvas(appState.originalImage, w, h);
+        const newImg = new Image();
+        newImg.onload = () => {
+          appState.originalImage = newImg;
+          alert('✅ 尺寸已成功套用！');
+        };
+        newImg.src = canvas.toDataURL('image/png');
+      } else {
+        alert('請輸入有效的寬度與高度');
+      }
+    };
+
+    // 旋轉
+    window.applyRotate = function(deg) {
+      if(!appState.originalImage) return;
+      const rad = deg * Math.PI / 180;
+      const sin = Math.abs(Math.sin(rad)), cos = Math.abs(Math.cos(rad));
+      const newWidth = appState.originalImage.width * cos + appState.originalImage.height * sin;
+      const newHeight = appState.originalImage.width * sin + appState.originalImage.height * cos;
+
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rad);
+      ctx.drawImage(appState.originalImage, -appState.originalImage.width / 2, -appState.originalImage.height / 2);
+      
+      const newImg = new Image();
+      newImg.onload = () => { appState.originalImage = newImg; };
+      newImg.src = canvas.toDataURL('image/png');
+    };
+
+    // 浮水印
+    window.applyWatermark = function() {
+      if(!appState.originalImage) return;
+      initCanvas(appState.originalImage); 
+      const text = document.getElementById('wm-text').value;
+      const color = document.getElementById('wm-color').value;
+      const alpha = document.getElementById('wm-alpha').value;
+      
+      const r = parseInt(color.slice(1,3), 16), g = parseInt(color.slice(3,5), 16), b = parseInt(color.slice(5,7), 16);
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      const fontSize = Math.max(20, canvas.width * 0.05); 
+      ctx.font = `bold ${fontSize}px sans-serif`;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(text, canvas.width - 20, canvas.height - 20);
+
+      const newImg = new Image();
+      newImg.onload = () => { 
+        appState.originalImage = newImg;
+        alert('✅ 浮水印已套用！');
+      };
+      newImg.src = canvas.toDataURL('image/png');
+    };
+
+    // 提升解析度
+    window.applyUpscale = function(scale) {
+      if(!appState.originalImage) return;
+      const newWidth = appState.originalImage.width * scale;
+      const newHeight = appState.originalImage.height * scale;
+
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(appState.originalImage, 0, 0, newWidth, newHeight);
+      
+      const newImg = new Image();
+      newImg.onload = () => { appState.originalImage = newImg; };
+      newImg.src = canvas.toDataURL('image/png');
+      alert(`✅ 成功提升解析度至 ${newWidth} x ${newHeight} (${scale}x)`);
+    };
+
+    // AI 去背
+    window.applyRemoveBg = async function() {
+      if(!appState.originalImage) return alert('請先上傳圖片');
+      
+      setLoading(true, "準備 AI 模型中...");
+      try {
+        if(typeof window.imglyRemoveBackground === 'undefined') {
+          const module = await import("https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.4.3/dist/imgly-background-removal.esm.js");
+          window.imglyRemoveBackground = module.default;
+        }
+        
+        setLoading(true, "AI 去背處理中...");
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const resultBlob = await window.imglyRemoveBackground(blob);
+        
+        const bgFreeImg = new Image();
+        bgFreeImg.onload = () => {
+          appState.originalImage = bgFreeImg;
+          initCanvas(bgFreeImg);
+          setLoading(false);
+          alert("✅ 自動去背成功！");
+        };
+        bgFreeImg.src = URL.createObjectURL(resultBlob);
+      } catch (err) {
+        console.error("AI 去背失敗:", err);
+        alert("AI 模型載入失敗。\n原因：若您是直接雙擊檔案(file://)，瀏覽器安全策略會阻擋模型下載。\n請嘗試上傳到本機伺服器(localhost)來開啟此功能。");
+        setLoading(false);
+      }
+    };
+
+    // 下載
+    window.downloadImage = function() {
+      if(!appState.originalImage) return;
+
+      let exportCanvas = canvas;
+      if (appState.activeTool.id === 'crop' && appState.cropperInstance) {
+        exportCanvas = appState.cropperInstance.getCroppedCanvas();
+      }
+
+      let format = 'image/png';
+      let quality = 1.0;
+      let ext = 'png';
+
+      if(appState.activeTool.id === 'convert') {
+        format = document.getElementById('format-select').value;
+        if(format === 'image/jpeg') ext = 'jpg';
+        else if(format === 'image/webp') ext = 'webp';
+        else if(format === 'image/bmp') ext = 'bmp';
+      } 
+      else if (appState.activeTool.id === 'compress') {
+        format = 'image/jpeg';
+        ext = 'jpg';
+        quality = parseFloat(document.getElementById('compress-slider').value);
+      }
+      else if (appState.activeTool.id === 'removebg') {
+        format = 'image/png';
+        ext = 'png';
+      }
+      else {
+        const file = document.getElementById('file-input').files[0];
+        if(file && (file.type === 'image/jpeg' || file.name.toLowerCase().endsWith('.jpg'))) {
+          format = 'image/jpeg';
+          ext = 'jpg';
+          quality = 0.95;
+        }
+      }
+
+      const dataUrl = exportCanvas.toDataURL(format, quality);
+      const link = document.createElement('a');
+      link.download = `imgtool_${appState.activeTool.id}_processed.${ext}`;
+      link.href = dataUrl;
+      link.click();
+    };
+  </script>
+</body>
+</html>
