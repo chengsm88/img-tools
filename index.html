@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-HK" id="html-root">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ImgTools - 本機端純前端圖片處理工具</title>
+  <title>ImgTools</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- HEIC2ANY: 用於 Apple HEIC 格式本機解碼 -->
+  <!-- HEIC2ANY -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   
-  <!-- Cropper.js: 用於圖片裁切 -->
+  <!-- Cropper.js -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
@@ -40,7 +40,6 @@
     .cropper-container-wrapper { max-width: 100%; max-height: 60vh; }
     input[type="number"] { min-width: 0; }
     
-    /* 讓去背後的透明區域有棋盤格底圖，方便辨識透明度 */
     .bg-checkerboard {
       background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAACVJREFUKFNjZCASMDKgAnv37v3/n4GQgCpGBhoG1NGAOmLQHkIAAIc3H/F7L41zAAAAAElFTkSuQmCC');
       background-repeat: repeat;
@@ -55,7 +54,15 @@
       <div class="flex items-center space-x-2 cursor-pointer" id="btn-go-home">
         <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-lg">I</div>
         <span class="text-xl font-bold text-slate-800">ImgTools</span>
-        <span class="ml-2 px-2 py-0.5 bg-emerald-50 text-emerald-600 text-xs font-semibold rounded-full border border-emerald-200">100% 本機運行</span>
+        <span class="ml-2 px-2 py-0.5 bg-emerald-50 text-emerald-600 text-xs font-semibold rounded-full border border-emerald-200" data-i18n="header_local">100% 本機運行</span>
+      </div>
+      <!-- 語言切換器 -->
+      <div class="flex items-center">
+        <select id="lang-switcher" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none cursor-pointer">
+          <option value="zh-TW">繁體中文</option>
+          <option value="zh-CN">简体中文</option>
+          <option value="en">English</option>
+        </select>
       </div>
     </div>
   </header>
@@ -63,20 +70,20 @@
   <!-- 視圖 1：首頁工具網格 -->
   <main id="view-home" class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 py-10 sm:py-16">
     <div class="text-center max-w-3xl mx-auto space-y-4 mb-12">
-      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900" data-i18n="home_title">
         可批量編輯圖片的 所有工具
       </h1>
-      <p class="text-slate-500 text-base sm:text-lg">
+      <p class="text-slate-500 text-base sm:text-lg" data-i18n="home_desc">
         你的純前端本機圖片編輯器就在這裡，而且永遠免費！<br>圖片不會上傳至任何伺服器，完全保障您的隱私安全。
       </p>
     </div>
 
     <!-- 過濾器 -->
     <div class="flex flex-wrap justify-center gap-2 mb-10" id="filter-container">
-      <button class="filter-btn active px-5 py-2 rounded-full text-sm font-semibold bg-slate-800 text-white shadow-md transition" data-filter="all">全部</button>
-      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" data-filter="optimize">最佳化</button>
-      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" data-filter="edit">編輯</button>
-      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" data-filter="convert">轉換</button>
+      <button class="filter-btn active px-5 py-2 rounded-full text-sm font-semibold bg-slate-800 text-white shadow-md transition" data-filter="all" data-i18n="filter_all" onclick="renderGrid('all')">全部</button>
+      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" data-filter="optimize" data-i18n="filter_optimize" onclick="renderGrid('optimize')">最佳化</button>
+      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" data-filter="edit" data-i18n="filter_edit" onclick="renderGrid('edit')">編輯</button>
+      <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" data-filter="convert" data-i18n="filter_convert" onclick="renderGrid('convert')">轉換</button>
     </div>
 
     <!-- 工具網格 -->
@@ -85,22 +92,22 @@
     </div>
   </main>
 
-  <!-- 視圖 2：工具工作區 (預設隱藏) -->
+  <!-- 視圖 2：工具工作區 -->
   <main id="view-workspace" class="hide flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-8">
     <button id="btn-back-home" class="mb-6 flex items-center space-x-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-      <span>返回所有工具</span>
+      <span data-i18n="ws_back">返回所有工具</span>
     </button>
 
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[600px]">
       
-      <!-- 左側/上方：上傳與設定區 -->
+      <!-- 左側：設定區 -->
       <div class="w-full md:w-80 bg-slate-50 border-r border-slate-200 p-6 flex flex-col h-full">
         <div class="flex items-center space-x-3 mb-6">
           <div id="ws-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm"></div>
           <div>
-            <h2 id="ws-title" class="text-lg font-bold text-slate-800 leading-tight">工具名稱</h2>
-            <p id="ws-desc" class="text-xs text-slate-500 mt-0.5">工具描述</p>
+            <h2 id="ws-title" class="text-lg font-bold text-slate-800 leading-tight"></h2>
+            <p id="ws-desc" class="text-xs text-slate-500 mt-0.5"></p>
           </div>
         </div>
 
@@ -109,26 +116,26 @@
           <input type="file" id="file-input" accept="image/*,.heic,.heif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
           <div id="upload-content">
             <svg class="w-8 h-8 text-slate-400 mx-auto mb-2 group-hover:text-blue-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-            <p class="text-sm font-semibold text-slate-700">選擇圖片檔案</p>
-            <p class="text-xs text-slate-400 mt-1">支援 HEIC, JPG, PNG 等</p>
+            <p class="text-sm font-semibold text-slate-700" data-i18n="upload_title">選擇圖片檔案</p>
+            <p class="text-xs text-slate-400 mt-1" data-i18n="upload_desc">支援 HEIC, JPG, PNG 等</p>
           </div>
-          <!-- 載入中狀態 (隱藏) -->
+          <!-- 載入中狀態 -->
           <div id="upload-loading" class="hide flex flex-col items-center justify-center h-full">
             <svg class="animate-spin mx-auto h-6 w-6 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p id="loading-text" class="text-sm font-semibold text-blue-600">處理中...</p>
+            <p id="loading-text" class="text-sm font-semibold text-blue-600" data-i18n="loading">處理中...</p>
           </div>
         </div>
 
         <!-- 動態設定面板 -->
         <div id="settings-panel" class="flex-grow space-y-4 opacity-50 pointer-events-none transition-opacity duration-300">
-          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 pb-2 border-b border-slate-200">工具設定</div>
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 pb-2 border-b border-slate-200" data-i18n="settings_title">工具設定</div>
           
           <!-- 轉換設定 -->
           <div id="setting-convert" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700">選擇輸出格式</label>
+            <label class="block text-sm font-semibold text-slate-700" data-i18n="convert_label">選擇輸出格式</label>
             <select id="format-select" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none">
               <option value="image/jpeg">JPEG (.jpg)</option>
               <option value="image/png">PNG (.png)</option>
@@ -139,51 +146,51 @@
 
           <!-- 壓縮設定 -->
           <div id="setting-compress" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700">圖片品質 (壓縮率)</label>
+            <label class="block text-sm font-semibold text-slate-700" data-i18n="compress_label">圖片品質 (壓縮率)</label>
             <input type="range" id="compress-slider" min="0.1" max="1" step="0.05" value="0.7" class="w-full accent-green-600">
             <div class="text-xs text-slate-500 text-right mt-1" id="compress-val">70%</div>
-            <p class="text-[10px] text-slate-400 leading-tight mt-2">提示：僅對 JPG 與 WEBP 有效。數值越小檔案越小，但畫質越低。</p>
+            <p class="text-[10px] text-slate-400 leading-tight mt-2" data-i18n="compress_hint">提示：僅對 JPG 與 WEBP 有效。數值越小檔案越小，但畫質越低。</p>
           </div>
 
           <!-- 裁切設定 -->
           <div id="setting-crop" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700">裁切比例</label>
+            <label class="block text-sm font-semibold text-slate-700" data-i18n="crop_label">裁切比例</label>
             <select id="crop-ratio" onchange="changeCropRatio(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none mb-3">
-              <option value="free">自由拖曳</option>
-              <option value="1">1:1 (正方形)</option>
-              <option value="1.33333">4:3 (標準)</option>
-              <option value="1.77777">16:9 (寬螢幕)</option>
+              <option value="free" data-i18n="crop_free">自由拖曳</option>
+              <option value="1" data-i18n="crop_1_1">1:1 (正方形)</option>
+              <option value="1.33333" data-i18n="crop_4_3">4:3 (標準)</option>
+              <option value="1.77777" data-i18n="crop_16_9">16:9 (寬螢幕)</option>
             </select>
-            <button onclick="applyCrop()" class="w-full py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-bold rounded-lg transition mt-2">套用裁切尺寸</button>
+            <button onclick="applyCrop()" class="w-full py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-bold rounded-lg transition mt-2" data-i18n="crop_btn">套用裁切尺寸</button>
           </div>
 
-          <!-- 刪除背景 (色彩容差) 設定 -->
+          <!-- 刪除背景設定 -->
           <div id="setting-removebg" class="hide space-y-3">
-            <p class="text-xs text-slate-600 mb-2">使用純 Canvas 色彩比對進行去背 (不需載入 AI 模型)。</p>
+            <p class="text-xs text-slate-600 mb-2" data-i18n="rmbg_hint">使用純 Canvas 色彩比對進行去背 (不需載入 AI 模型)。</p>
             
             <div class="space-y-2">
-              <label class="block text-xs font-semibold text-slate-700">選擇要去除的背景顏色</label>
+              <label class="block text-xs font-semibold text-slate-700" data-i18n="rmbg_color">選擇要去除的背景顏色</label>
               <input type="color" id="removebg-color" value="#ffffff" class="w-full h-8 rounded-lg cursor-pointer">
             </div>
 
             <div class="space-y-1 mt-3">
-              <label class="block text-xs font-semibold text-slate-700">色彩容差度</label>
+              <label class="block text-xs font-semibold text-slate-700" data-i18n="rmbg_tolerance">色彩容差度</label>
               <input type="range" id="removebg-tolerance" min="0" max="150" step="5" value="30" class="w-full accent-emerald-600">
               <div class="text-[10px] text-slate-400 flex justify-between">
-                <span>嚴格</span>
-                <span>寬鬆</span>
+                <span data-i18n="rmbg_strict">嚴格</span>
+                <span data-i18n="rmbg_loose">寬鬆</span>
               </div>
             </div>
 
             <button onclick="applyColorRemoval()" class="w-full py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-bold rounded-lg transition mt-4 flex items-center justify-center space-x-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-              <span>套用去背</span>
+              <span data-i18n="rmbg_btn">套用去背</span>
             </button>
           </div>
 
           <!-- 提升圖片質量設定 -->
           <div id="setting-upscale" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">高解析度放大倍率</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-2" data-i18n="upscale_label">高解析度放大倍率</label>
             <div class="grid grid-cols-3 gap-2">
               <button onclick="applyUpscale(2)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">2x</button>
               <button onclick="applyUpscale(4)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">4x</button>
@@ -195,32 +202,32 @@
           <div id="setting-resize" class="hide space-y-3">
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">寬度 (px)</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="resize_w">寬度 (px)</label>
                 <input type="number" id="resize-w" class="w-full min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">高度 (px)</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="resize_h">高度 (px)</label>
                 <input type="number" id="resize-h" class="w-full min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
               </div>
             </div>
-            <label class="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+            <label class="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer mt-2">
               <input type="checkbox" id="resize-aspect" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-              <span>保持長寬比例</span>
+              <span data-i18n="resize_aspect">保持長寬比例</span>
             </label>
-            <button onclick="applyResize()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition mt-2">套用尺寸</button>
+            <button onclick="applyResize()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition mt-2" data-i18n="resize_btn">套用尺寸</button>
           </div>
 
           <!-- 旋轉設定 -->
           <div id="setting-rotate" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">旋轉與翻轉</label>
+            <label class="block text-sm font-semibold text-slate-700 mb-2" data-i18n="rotate_label">旋轉與翻轉</label>
             <div class="grid grid-cols-2 gap-2">
               <button onclick="applyRotate(-90)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
-                <span>左旋 90°</span>
+                <span data-i18n="rotate_left">左旋 90°</span>
               </button>
               <button onclick="applyRotate(90)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"></path></svg>
-                <span>右旋 90°</span>
+                <span data-i18n="rotate_right">右旋 90°</span>
               </button>
             </div>
           </div>
@@ -228,20 +235,20 @@
           <!-- 浮水印設定 -->
           <div id="setting-watermark" class="hide space-y-3">
             <div>
-              <label class="block text-sm font-semibold text-slate-700 mb-1">文字浮水印</label>
+              <label class="block text-sm font-semibold text-slate-700 mb-1" data-i18n="wm_label">文字浮水印</label>
               <input type="text" id="wm-text" placeholder="輸入浮水印內容" value="ImgTools" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">顏色</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="wm_color">顏色</label>
                 <input type="color" id="wm-color" value="#ffffff" class="w-full h-8 rounded-lg cursor-pointer">
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1">透明度</label>
+                <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="wm_opacity">透明度</label>
                 <input type="range" id="wm-alpha" min="0.1" max="1" step="0.1" value="0.7" class="w-full mt-2">
               </div>
             </div>
-            <button onclick="applyWatermark()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition mt-2">套用浮水印</button>
+            <button onclick="applyWatermark()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition mt-2" data-i18n="wm_btn">套用浮水印</button>
           </div>
 
         </div>
@@ -250,7 +257,7 @@
         <div class="mt-6 pt-4 border-t border-slate-200">
           <button id="btn-download" onclick="downloadImage()" disabled class="w-full py-3.5 px-4 bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            <span>處理並下載</span>
+            <span data-i18n="download_btn">處理並下載</span>
           </button>
         </div>
       </div>
@@ -259,13 +266,11 @@
       <div class="flex-grow bg-slate-800 p-4 md:p-8 flex items-center justify-center relative overflow-hidden min-h-[400px] bg-checkerboard">
         <div id="preview-placeholder" class="text-center text-slate-300 flex flex-col items-center bg-slate-800/80 p-6 rounded-2xl backdrop-blur-sm">
           <svg class="w-16 h-16 mb-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-          <p>尚未載入圖片，請從左側上傳</p>
+          <p data-i18n="preview_empty">尚未載入圖片，請從左側上傳</p>
         </div>
         
-        <!-- 畫布預覽 (用於一般工具) -->
         <canvas id="main-canvas" class="hide max-w-full max-h-full object-contain shadow-2xl rounded"></canvas>
         
-        <!-- 圖片元素 (專用於 Cropper.js 裁切) -->
         <div id="cropper-container" class="hide cropper-container-wrapper w-full h-full flex items-center justify-center">
           <img id="crop-image" class="max-w-full max-h-full" src="" alt="Cropper Image">
         </div>
@@ -274,40 +279,192 @@
     </div>
   </main>
 
-  <footer class="bg-white border-t border-slate-200 mt-auto py-6 text-center text-sm text-slate-500">
-    <div class="max-w-7xl mx-auto px-4">
-      ImgTools - 基於 HTML5 Canvas, Cropper.js 的純本機端圖片處理工具。無需伺服器，無隱私風險。
-    </div>
+  <footer class="bg-white border-t border-slate-200 mt-auto py-6 text-center text-sm text-slate-500" data-i18n="footer_text">
+    ImgTools - 基於 HTML5 Canvas, Cropper.js 的純本機端圖片處理工具。無需伺服器，無隱私風險。
   </footer>
 
-  <!-- 核心 JavaScript：全局防護架構 -->
+  <!-- 多語系與核心邏輯 -->
   <script>
+    // --- 1. 多語系 (i18n) 字典 ---
+    const i18n = {
+      'zh-TW': {
+        header_local: '100% 本機運行',
+        home_title: '可批量編輯圖片的 所有工具',
+        home_desc: '你的純前端本機圖片編輯器就在這裡，而且永遠免費！<br>圖片不會上傳至任何伺服器，完全保障您的隱私安全。',
+        filter_all: '全部', filter_optimize: '最佳化', filter_edit: '編輯', filter_convert: '轉換',
+        ws_back: '返回所有工具',
+        upload_title: '選擇圖片檔案', upload_desc: '支援 HEIC, JPG, PNG 等', loading: '處理中...',
+        settings_title: '工具設定',
+        convert_label: '選擇輸出格式',
+        compress_label: '圖片品質 (壓縮率)', compress_hint: '提示：僅對 JPG 與 WEBP 有效。數值越小檔案越小，但畫質越低。',
+        crop_label: '裁切比例', crop_free: '自由拖曳', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (標準)', crop_16_9: '16:9 (寬螢幕)', crop_btn: '套用裁切尺寸',
+        rmbg_hint: '使用純 Canvas 色彩比對進行去背 (不需載入 AI 模型)。', rmbg_color: '選擇要去除的背景顏色', rmbg_tolerance: '色彩容差度', rmbg_strict: '嚴格', rmbg_loose: '寬鬆', rmbg_btn: '套用去背',
+        upscale_label: '高解析度放大倍率',
+        resize_w: '寬度 (px)', resize_h: '高度 (px)', resize_aspect: '保持長寬比例', resize_btn: '套用尺寸',
+        rotate_label: '旋轉與翻轉', rotate_left: '左旋 90°', rotate_right: '右旋 90°',
+        wm_label: '文字浮水印', wm_color: '顏色', wm_opacity: '透明度', wm_btn: '套用浮水印',
+        download_btn: '處理並下載', preview_empty: '尚未載入圖片，請從左側上傳',
+        footer_text: 'ImgTools - 基於 HTML5 Canvas, Cropper.js 的純本機端圖片處理工具。無需伺服器，無隱私風險。',
+        
+        // 工具名稱與描述
+        t_convert_title: '格式轉換', t_convert_desc: '輕鬆轉換 PNG, PSD, SVG, WEBP, HEIC 等格式至 JPG / PNG。',
+        t_compress_title: '壓縮圖片', t_compress_desc: '降低檔案大小同時保持視覺品質',
+        t_crop_title: '裁剪圖片', t_crop_desc: '框選特定區域進行自由或等比裁切',
+        t_resize_title: '調整大小', t_resize_desc: '按自訂像素尺寸縮放，不失真',
+        t_removebg_title: '刪除背景', t_removebg_desc: '運用色彩容差演算法去背，完全支援本機直接執行。',
+        t_upscale_title: '提升圖片質量', t_upscale_desc: '以高解析度放大圖像，保持高視覺品質',
+        t_rotate_title: '旋轉圖片', t_rotate_desc: '90度無損旋轉您的照片',
+        t_watermark_title: '加入浮水印', t_watermark_desc: '快速為圖片加上文字保護標記',
+
+        // 提示訊息 (Alerts)
+        msg_crop_success: '✅ 裁切完成！請點擊「處理並下載」。',
+        msg_resize_success: '✅ 尺寸已成功套用！',
+        msg_resize_err: '請輸入有效的寬度與高度',
+        msg_wm_success: '✅ 浮水印已套用！',
+        msg_up_success: '✅ 成功提升解析度',
+        msg_rmbg_success: '✅ 去背完成！請點擊下方按鈕下載 PNG (保留透明背景)。',
+        msg_need_upload: '請先上傳圖片',
+        msg_reading: '讀取圖片中...', msg_processing: '像素分析去背中...'
+      },
+      'zh-CN': {
+        header_local: '100% 本地运行',
+        home_title: '可批量编辑图片的 所有工具',
+        home_desc: '你的纯前端本地图片编辑器就在这里，而且永远免费！<br>图片不会上传至任何服务器，完全保障您的隐私安全。',
+        filter_all: '全部', filter_optimize: '优化', filter_edit: '编辑', filter_convert: '转换',
+        ws_back: '返回所有工具',
+        upload_title: '选择图片文件', upload_desc: '支持 HEIC, JPG, PNG 等', loading: '处理中...',
+        settings_title: '工具设置',
+        convert_label: '选择输出格式',
+        compress_label: '图片质量 (压缩率)', compress_hint: '提示：仅对 JPG 与 WEBP 有效。数值越小文件越小，但画质越低。',
+        crop_label: '裁剪比例', crop_free: '自由拖拽', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (标准)', crop_16_9: '16:9 (宽屏)', crop_btn: '应用裁剪尺寸',
+        rmbg_hint: '使用纯 Canvas 色彩比对进行抠图 (无需加载 AI 模型)。', rmbg_color: '选择要去除的背景颜色', rmbg_tolerance: '色彩容差度', rmbg_strict: '严格', rmbg_loose: '宽松', rmbg_btn: '应用抠图',
+        upscale_label: '高分辨率放大倍率',
+        resize_w: '宽度 (px)', resize_h: '高度 (px)', resize_aspect: '保持长宽比例', resize_btn: '应用尺寸',
+        rotate_label: '旋转与翻转', rotate_left: '左旋 90°', rotate_right: '右旋 90°',
+        wm_label: '文字水印', wm_color: '颜色', wm_opacity: '透明度', wm_btn: '应用水印',
+        download_btn: '处理并下载', preview_empty: '尚未加载图片，请从左侧上传',
+        footer_text: 'ImgTools - 基于 HTML5 Canvas, Cropper.js 的纯本地端图片处理工具。无需服务器，无隐私风险。',
+        
+        t_convert_title: '格式转换', t_convert_desc: '轻松转换 PNG, PSD, SVG, WEBP, HEIC 等格式至 JPG / PNG。',
+        t_compress_title: '压缩图片', t_compress_desc: '降低文件大小同时保持视觉质量',
+        t_crop_title: '裁剪图片', t_crop_desc: '框选特定区域进行自由或等比裁剪',
+        t_resize_title: '调整大小', t_resize_desc: '按自定义像素尺寸缩放，不失真',
+        t_removebg_title: '删除背景', t_removebg_desc: '运用色彩容差算法抠图，完全支持本地直接运行。',
+        t_upscale_title: '提升图片质量', t_upscale_desc: '以高分辨率放大图像，保持高视觉质量',
+        t_rotate_title: '旋转图片', t_rotate_desc: '90度无损旋转您的照片',
+        t_watermark_title: '加入水印', t_watermark_desc: '快速为图片加上文字保护标记',
+
+        msg_crop_success: '✅ 裁剪完成！请点击“处理并下载”。',
+        msg_resize_success: '✅ 尺寸已成功应用！',
+        msg_resize_err: '请输入有效的宽度与高度',
+        msg_wm_success: '✅ 水印已应用！',
+        msg_up_success: '✅ 成功提升分辨率',
+        msg_rmbg_success: '✅ 抠图完成！请点击下方按钮下载 PNG (保留透明背景)。',
+        msg_need_upload: '请先上传图片',
+        msg_reading: '读取图片中...', msg_processing: '像素分析抠图中...'
+      },
+      'en': {
+        header_local: '100% Local Processing',
+        home_title: 'All Tools for Image Editing',
+        home_desc: 'Your purely frontend local image editor is here, and always free!<br>Images are never uploaded to any server, fully protecting your privacy.',
+        filter_all: 'All', filter_optimize: 'Optimize', filter_edit: 'Edit', filter_convert: 'Convert',
+        ws_back: 'Back to all tools',
+        upload_title: 'Select Image File', upload_desc: 'Supports HEIC, JPG, PNG, etc.', loading: 'Processing...',
+        settings_title: 'Tool Settings',
+        convert_label: 'Select Output Format',
+        compress_label: 'Image Quality (Compression)', compress_hint: 'Note: Only applies to JPG and WEBP. Lower values mean smaller size but lower quality.',
+        crop_label: 'Crop Ratio', crop_free: 'Free Drag', crop_1_1: '1:1 (Square)', crop_4_3: '4:3 (Standard)', crop_16_9: '16:9 (Widescreen)', crop_btn: 'Apply Crop',
+        rmbg_hint: 'Uses pure Canvas color matching for background removal (No AI model needed).', rmbg_color: 'Select background color to remove', rmbg_tolerance: 'Color Tolerance', rmbg_strict: 'Strict', rmbg_loose: 'Loose', rmbg_btn: 'Apply Background Removal',
+        upscale_label: 'Upscale Multiplier',
+        resize_w: 'Width (px)', resize_h: 'Height (px)', resize_aspect: 'Keep Aspect Ratio', resize_btn: 'Apply Size',
+        rotate_label: 'Rotate & Flip', rotate_left: 'Rotate Left 90°', rotate_right: 'Rotate Right 90°',
+        wm_label: 'Text Watermark', wm_color: 'Color', wm_opacity: 'Opacity', wm_btn: 'Apply Watermark',
+        download_btn: 'Process & Download', preview_empty: 'No image loaded, please upload from the left',
+        footer_text: 'ImgTools - A pure local image processing tool based on HTML5 Canvas & Cropper.js. No servers, no privacy risks.',
+        
+        t_convert_title: 'Convert Format', t_convert_desc: 'Easily convert PNG, PSD, SVG, WEBP, HEIC formats to JPG / PNG.',
+        t_compress_title: 'Compress Image', t_compress_desc: 'Reduce file size while maintaining visual quality.',
+        t_crop_title: 'Crop Image', t_crop_desc: 'Select a specific area for free or aspect-ratio cropping.',
+        t_resize_title: 'Resize', t_resize_desc: 'Scale by custom pixel dimensions without distortion.',
+        t_removebg_title: 'Remove Background', t_removebg_desc: 'Uses color tolerance algorithms to remove backgrounds entirely locally.',
+        t_upscale_title: 'Upscale Quality', t_upscale_desc: 'Enlarge images at high resolution while maintaining visual quality.',
+        t_rotate_title: 'Rotate Image', t_rotate_desc: 'Losslessly rotate your photos by 90 degrees.',
+        t_watermark_title: 'Add Watermark', t_watermark_desc: 'Quickly add text protection marks to images.',
+
+        msg_crop_success: '✅ Crop complete! Please click "Process & Download".',
+        msg_resize_success: '✅ Size successfully applied!',
+        msg_resize_err: 'Please enter valid width and height',
+        msg_wm_success: '✅ Watermark applied!',
+        msg_up_success: '✅ Successfully upscaled resolution',
+        msg_rmbg_success: '✅ Background removed! Click download below for PNG (keeps transparency).',
+        msg_need_upload: 'Please upload an image first',
+        msg_reading: 'Reading image...', msg_processing: 'Analyzing pixels for background removal...'
+      }
+    };
+
+    let currentLang = localStorage.getItem('imgtools_lang') || 'zh-TW';
+    
+    function t(key) {
+      return i18n[currentLang][key] || key;
+    }
+
+    function applyTranslations() {
+      // 靜態標籤翻譯
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[currentLang][key]) {
+          // 若有包含 HTML 標籤，使用 innerHTML，否則 textContent
+          if(i18n[currentLang][key].includes('<br>')) {
+            el.innerHTML = i18n[currentLang][key];
+          } else {
+            el.textContent = i18n[currentLang][key];
+          }
+        }
+      });
+      // 更新 html lang 標籤
+      document.getElementById('html-root').lang = currentLang;
+      // 重新渲染網格以套用工具的翻譯
+      renderGrid(window.currentFilter || 'all');
+      // 如果處於工作區，更新標題和描述
+      if (appState.activeTool) {
+        document.getElementById('ws-title').textContent = t('t_' + appState.activeTool.id + '_title');
+        document.getElementById('ws-desc').textContent = t('t_' + appState.activeTool.id + '_desc');
+      }
+    }
+
+    // 綁定切換語言事件
+    document.addEventListener('DOMContentLoaded', () => {
+      const langSwitcher = document.getElementById('lang-switcher');
+      langSwitcher.value = currentLang;
+      langSwitcher.addEventListener('change', (e) => {
+        currentLang = e.target.value;
+        localStorage.setItem('imgtools_lang', currentLang);
+        applyTranslations();
+      });
+    });
+
+    // --- 2. 原始工具資料與邏輯定義 ---
+    const toolsData = [
+      { id: 'convert', category: 'convert', color: 'bg-yellow-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>' },
+      { id: 'compress', category: 'optimize', color: 'bg-green-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>' },
+      { id: 'crop', category: 'edit', color: 'bg-blue-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>' },
+      { id: 'resize', category: 'edit', color: 'bg-blue-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>' },
+      { id: 'removebg', category: 'optimize', color: 'bg-emerald-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>' },
+      { id: 'upscale', category: 'optimize', color: 'bg-emerald-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>' },
+      { id: 'rotate', category: 'edit', color: 'bg-cyan-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>' },
+      { id: 'watermark', category: 'edit', color: 'bg-indigo-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>' }
+    ];
+
+    window.appState = { originalImage: null, activeTool: null, cropperInstance: null };
+    window.currentFilter = 'all'; // 記錄當前過濾器狀態
+
     document.addEventListener('DOMContentLoaded', () => {
       try {
-        // 1. 資料定義
-        const toolsData = [
-          { id: 'convert', title: '格式轉換', desc: '輕鬆轉換 PNG, PSD, SVG, WEBP, HEIC 等格式至 JPG / PNG。', category: 'convert', color: 'bg-yellow-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>' },
-          { id: 'compress', title: '壓縮圖片', desc: '降低檔案大小同時保持視覺品質', category: 'optimize', color: 'bg-green-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>' },
-          { id: 'crop', title: '裁剪圖片', desc: '框選特定區域進行自由或等比裁切', category: 'edit', color: 'bg-blue-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>' },
-          { id: 'resize', title: '調整大小', desc: '按自訂像素尺寸縮放，不失真', category: 'edit', color: 'bg-blue-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>' },
-          { id: 'removebg', title: '刪除背景', desc: '運用色彩容差演算法去背，完全支援本機直接執行。', category: 'optimize', color: 'bg-emerald-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>' },
-          { id: 'upscale', title: '提升圖片質量', desc: '以高解析度放大圖像，保持高視覺品質', category: 'optimize', color: 'bg-emerald-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>' },
-          { id: 'rotate', title: '旋轉圖片', desc: '90度無損旋轉您的照片', category: 'edit', color: 'bg-cyan-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>' },
-          { id: 'watermark', title: '加入浮水印', desc: '快速為圖片加上文字保護標記', category: 'edit', color: 'bg-indigo-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>' }
-        ];
-
-        // 2. 狀態管理
-        window.appState = {
-          originalImage: null,
-          activeTool: null,
-          cropperInstance: null
-        };
-
         const canvas = document.getElementById('main-canvas');
         const ctx = canvas ? canvas.getContext('2d') : null;
 
-        // 3. 核心流程函數
         window.renderGrid = function(filter = 'all') {
+          window.currentFilter = filter;
           const gridEl = document.getElementById('tools-grid');
           if(!gridEl) return;
           gridEl.innerHTML = '';
@@ -320,8 +477,8 @@
               <div class="w-12 h-12 rounded-xl ${tool.color} flex items-center justify-center text-white mb-4">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${tool.icon}</svg>
               </div>
-              <h3 class="font-bold text-slate-800 text-lg mb-1">${tool.title}</h3>
-              <p class="text-xs text-slate-500 leading-relaxed">${tool.desc}</p>
+              <h3 class="font-bold text-slate-800 text-lg mb-1">${t('t_' + tool.id + '_title')}</h3>
+              <p class="text-xs text-slate-500 leading-relaxed">${t('t_' + tool.id + '_desc')}</p>
             `;
             gridEl.appendChild(card);
           });
@@ -330,7 +487,7 @@
             b.classList.remove('bg-slate-800', 'text-white');
             b.classList.add('bg-white', 'text-slate-600');
           });
-          const activeBtn = document.querySelector(`.filter-btn[onclick="renderGrid('${filter}')"]`);
+          const activeBtn = document.querySelector(`.filter-btn[data-filter="${filter}"]`);
           if(activeBtn) {
             activeBtn.classList.add('bg-slate-800', 'text-white');
             activeBtn.classList.remove('bg-white', 'text-slate-600');
@@ -351,8 +508,9 @@
           document.getElementById('view-home').classList.add('hide');
           document.getElementById('view-workspace').classList.remove('hide');
           
-          document.getElementById('ws-title').textContent = tool.title;
-          document.getElementById('ws-desc').textContent = tool.desc;
+          document.getElementById('ws-title').textContent = t('t_' + tool.id + '_title');
+          document.getElementById('ws-desc').textContent = t('t_' + tool.id + '_desc');
+          
           const iconEl = document.getElementById('ws-icon');
           iconEl.className = `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${tool.color}`;
           iconEl.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${tool.icon}</svg>`;
@@ -378,10 +536,10 @@
           }
         }
 
-        function setLoading(isLoading, text = "處理中...") {
+        function setLoading(isLoading, textKey = "loading") {
           const uploadContent = document.getElementById('upload-content');
           const uploadLoading = document.getElementById('upload-loading');
-          document.getElementById('loading-text').textContent = text;
+          document.getElementById('loading-text').textContent = t(textKey);
           
           if (isLoading) {
             uploadContent.classList.add('hide');
@@ -433,10 +591,8 @@
           }
         }
 
-        // --- 4. 綁定事件與工具函數 ---
-        
-        // 初始化網格
-        renderGrid();
+        // 初始化翻譯與網格
+        applyTranslations();
 
         // 檔案上傳
         const fileInput = document.getElementById('file-input');
@@ -444,7 +600,7 @@
           fileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            setLoading(true, "讀取圖片中...");
+            setLoading(true, "msg_reading");
 
             try {
               let imageBlob = file;
@@ -469,8 +625,8 @@
               };
               reader.readAsDataURL(imageBlob);
             } catch (error) {
-              console.error("錯誤:", error);
-              alert('圖片讀取錯誤：' + error.message);
+              console.error("Error:", error);
+              alert(t('msg_reading') + ' ' + error.message);
               setLoading(false);
             }
           });
@@ -497,7 +653,7 @@
           const newImg = new Image();
           newImg.onload = () => {
             appState.originalImage = newImg;
-            alert("✅ 裁切完成！請點擊「處理並下載」。");
+            alert(t('msg_crop_success'));
           };
           newImg.src = croppedCanvas.toDataURL('image/png');
         };
@@ -521,7 +677,7 @@
         }
 
         window.applyResize = function() {
-          if(!appState.originalImage) return alert('請先上傳圖片');
+          if(!appState.originalImage) return alert(t('msg_need_upload'));
           const w = parseInt(resizeW.value);
           const h = parseInt(resizeH.value);
           if(w > 0 && h > 0) {
@@ -529,11 +685,11 @@
             const newImg = new Image();
             newImg.onload = () => {
               appState.originalImage = newImg;
-              alert('✅ 尺寸已成功套用！');
+              alert(t('msg_resize_success'));
             };
             newImg.src = canvas.toDataURL('image/png');
           } else {
-            alert('請輸入有效的寬度與高度');
+            alert(t('msg_resize_err'));
           }
         };
 
@@ -576,7 +732,7 @@
           const newImg = new Image();
           newImg.onload = () => { 
             appState.originalImage = newImg;
-            alert('✅ 浮水印已套用！');
+            alert(t('msg_wm_success'));
           };
           newImg.src = canvas.toDataURL('image/png');
         };
@@ -597,59 +753,41 @@
           const newImg = new Image();
           newImg.onload = () => { appState.originalImage = newImg; };
           newImg.src = canvas.toDataURL('image/png');
-          alert(`✅ 成功提升解析度至 ${newWidth} x ${newHeight} (${scale}x)`);
+          alert(`${t('msg_up_success')} : ${newWidth} x ${newHeight} (${scale}x)`);
         };
 
-        // 純 Canvas 色彩容差去背 (無模型、完全本地)
+        // 去背
         window.applyColorRemoval = function() {
-          if(!appState.originalImage) return alert('請先上傳圖片');
+          if(!appState.originalImage) return alert(t('msg_need_upload'));
+          setLoading(true, "msg_processing");
           
-          setLoading(true, "像素分析去背中...");
-          
-          // 確保畫布是原圖狀態
           initCanvas(appState.originalImage);
           
           setTimeout(() => {
             const colorHex = document.getElementById('removebg-color').value;
             const tolerance = parseInt(document.getElementById('removebg-tolerance').value);
             
-            // 轉換選擇的顏色 (Hex) 到 RGB
             const rTarget = parseInt(colorHex.slice(1,3), 16);
             const gTarget = parseInt(colorHex.slice(3,5), 16);
             const bTarget = parseInt(colorHex.slice(5,7), 16);
 
-            // 取得畫布上的所有像素數據
             const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imgData.data;
 
-            // 遍歷所有像素比對顏色
             for (let i = 0; i < data.length; i += 4) {
-              const r = data[i];
-              const g = data[i+1];
-              const b = data[i+2];
-              
-              // 計算與目標顏色的距離 (三維空間歐氏距離的近似)
+              const r = data[i], g = data[i+1], b = data[i+2];
               const distance = Math.sqrt(
-                Math.pow(r - rTarget, 2) +
-                Math.pow(g - gTarget, 2) +
-                Math.pow(b - bTarget, 2)
+                Math.pow(r - rTarget, 2) + Math.pow(g - gTarget, 2) + Math.pow(b - bTarget, 2)
               );
-
-              // 如果顏色非常接近 (在容差範圍內)，則將該像素變為完全透明
-              if (distance <= tolerance) {
-                data[i+3] = 0; // Alpha 通道設為 0
-              }
+              if (distance <= tolerance) data[i+3] = 0; 
             }
 
-            // 將處理後的像素放回畫布
             ctx.putImageData(imgData, 0, 0);
-
-            // 更新記憶體圖片
             const newImg = new Image();
             newImg.onload = () => {
               appState.originalImage = newImg;
               setLoading(false);
-              alert('✅ 去背完成！請點擊下方按鈕下載 PNG (保留透明背景)。');
+              alert(t('msg_rmbg_success'));
             };
             newImg.src = canvas.toDataURL('image/png');
           }, 100);
@@ -700,8 +838,7 @@
         };
 
       } catch (err) {
-        console.error("程式初始化失敗:", err);
-        alert("程式初始化發生錯誤，請重新整理網頁！ (" + err.message + ")");
+        console.error("Initialization Error:", err);
       }
     });
   </script>
