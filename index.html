@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ImgTools</title>
+  <title>ImgTools - 支援 100 張批量圖片處理</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -34,8 +34,8 @@
     .tool-card { transition: all 0.2s ease-in-out; }
     .tool-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(241, 245, 249, 0.5); border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 9999px; }
     .hide { display: none !important; }
     .cropper-container-wrapper { max-width: 100%; max-height: 60vh; }
     input[type="number"] { min-width: 0; }
@@ -44,6 +44,12 @@
       background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAACVJREFUKFNjZCASMDKgAnv37v3/n4GQgCpGBhoG1NGAOmLQHkIAAIc3H/F7L41zAAAAAElFTkSuQmCC');
       background-repeat: repeat;
     }
+
+    @keyframes slideIn {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .toast-enter { animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   </style>
 </head>
 <body class="text-slate-800 font-sans min-h-screen flex flex-col antialiased">
@@ -94,17 +100,23 @@
 
   <!-- 視圖 2：工具工作區 -->
   <main id="view-workspace" class="hide flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-8">
-    <button id="btn-back-home" class="mb-6 flex items-center space-x-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-      <span data-i18n="ws_back">返回所有工具</span>
-    </button>
+    <div class="flex items-center justify-between mb-6">
+      <button id="btn-back-home" class="flex items-center space-x-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        <span data-i18n="ws_back">返回所有工具</span>
+      </button>
+      <div id="batch-badge" class="hide px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full flex items-center space-x-1">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+        <span data-i18n="batch_supported">支援最多 100 張批量處理</span>
+      </div>
+    </div>
 
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[600px]">
       
       <!-- 左側：設定區 -->
-      <div class="w-full md:w-80 bg-slate-50 border-r border-slate-200 p-6 flex flex-col h-full">
+      <div class="w-full md:w-80 bg-slate-50 border-r border-slate-200 p-6 flex flex-col h-full shrink-0">
         <div class="flex items-center space-x-3 mb-6">
-          <div id="ws-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm"></div>
+          <div id="ws-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0"></div>
           <div>
             <h2 id="ws-title" class="text-lg font-bold text-slate-800 leading-tight"></h2>
             <p id="ws-desc" class="text-xs text-slate-500 mt-0.5"></p>
@@ -116,8 +128,8 @@
           <input type="file" id="file-input" accept="image/*,.heic,.heif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
           <div id="upload-content">
             <svg class="w-8 h-8 text-slate-400 mx-auto mb-2 group-hover:text-blue-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-            <p class="text-sm font-semibold text-slate-700" data-i18n="upload_title">選擇圖片檔案</p>
-            <p class="text-xs text-slate-400 mt-1" data-i18n="upload_desc">支援 HEIC, JPG, PNG 等</p>
+            <p id="upload-title-text" class="text-sm font-semibold text-slate-700" data-i18n="upload_title">選擇圖片檔案</p>
+            <p id="upload-desc-text" class="text-xs text-slate-400 mt-1" data-i18n="upload_desc">支援 HEIC, JPG, PNG 等</p>
           </div>
           <!-- 載入中狀態 -->
           <div id="upload-loading" class="hide flex flex-col items-center justify-center h-full">
@@ -136,12 +148,17 @@
           <!-- 轉換設定 -->
           <div id="setting-convert" class="hide space-y-3">
             <label class="block text-sm font-semibold text-slate-700" data-i18n="convert_label">選擇輸出格式</label>
-            <select id="format-select" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none">
+            <select id="format-select" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none bg-white">
               <option value="image/jpeg">JPEG (.jpg)</option>
               <option value="image/png">PNG (.png)</option>
               <option value="image/webp">WEBP (.webp)</option>
               <option value="image/bmp">BMP (.bmp)</option>
             </select>
+            <div id="convert-quality-box" class="pt-2">
+              <label class="block text-xs font-semibold text-slate-600 mb-1" data-i18n="convert_quality">輸出畫質 (適用於 JPG/WEBP)</label>
+              <input type="range" id="convert-quality-slider" min="0.5" max="1" step="0.05" value="0.9" class="w-full accent-yellow-500">
+              <div class="text-xs text-slate-500 text-right" id="convert-quality-val">90%</div>
+            </div>
           </div>
 
           <!-- 壓縮設定 -->
@@ -149,30 +166,58 @@
             <label class="block text-sm font-semibold text-slate-700" data-i18n="compress_label">圖片品質 (壓縮率)</label>
             <input type="range" id="compress-slider" min="0.1" max="1" step="0.05" value="0.7" class="w-full accent-green-600">
             <div class="text-xs text-slate-500 text-right mt-1" id="compress-val">70%</div>
-            <p class="text-[10px] text-slate-400 leading-tight mt-2" data-i18n="compress_hint">提示：僅對 JPG 與 WEBP 有效。數值越小檔案越小，但畫質越低。</p>
+            
+            <div class="pt-1">
+              <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="compress_format_label">壓縮輸出格式</label>
+              <select id="compress-format" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                <option value="image/jpeg">JPEG (.jpg) - 最佳相容性</option>
+                <option value="image/webp">WEBP (.webp) - 體積最小</option>
+              </select>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-tight mt-2" data-i18n="compress_hint">提示：數值越小檔案越小，但畫質越低。批量處理時將套用至所有圖片。</p>
           </div>
 
           <!-- 裁切設定 -->
           <div id="setting-crop" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700" data-i18n="crop_label">裁切比例</label>
-            <select id="crop-ratio" onchange="changeCropRatio(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none mb-3">
-              <option value="free" data-i18n="crop_free">自由拖曳</option>
+            <label class="block text-sm font-semibold text-slate-700" data-i18n="crop_label">批量裁切比例 (自動置中裁切)</label>
+            <select id="crop-ratio" onchange="changeCropRatio(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none bg-white">
               <option value="1" data-i18n="crop_1_1">1:1 (正方形)</option>
-              <option value="1.33333" data-i18n="crop_4_3">4:3 (標準)</option>
+              <option value="1.33333" data-i18n="crop_4_3">4:3 (標準橫向)</option>
+              <option value="0.75" data-i18n="crop_3_4">3:4 (標準直向)</option>
               <option value="1.77777" data-i18n="crop_16_9">16:9 (寬螢幕)</option>
+              <option value="0.5625" data-i18n="crop_9_16">9:16 (手機直向)</option>
+              <option value="custom" data-i18n="crop_custom">自訂寬高比 / 拖曳框選</option>
             </select>
-            <button onclick="applyCrop()" class="w-full py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-bold rounded-lg transition mt-2" data-i18n="crop_btn">套用裁切尺寸</button>
+
+            <div id="crop-custom-box" class="hide grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-1" data-i18n="crop_ratio_w">比例寬</label>
+                <input type="number" id="crop-custom-w" value="16" min="1" oninput="updateCustomCropRatio()" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm outline-none bg-white">
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-600 mb-1" data-i18n="crop_ratio_h">比例高</label>
+                <input type="number" id="crop-custom-h" value="9" min="1" oninput="updateCustomCropRatio()" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm outline-none bg-white">
+              </div>
+            </div>
+
+            <div class="pt-1">
+              <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="crop_anchor_label">裁切對齊位置</label>
+              <select id="crop-anchor" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                <option value="center" data-i18n="crop_anchor_center">正中央 (預設)</option>
+                <option value="top" data-i18n="crop_anchor_top">靠上 / 靠左對齊 (保留人像頭部)</option>
+                <option value="bottom" data-i18n="crop_anchor_bottom">靠下 / 靠右對齊</option>
+              </select>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-tight" data-i18n="crop_batch_hint">提示：可在右側預覽框微調比例，點擊下方按鈕即可依設定比例批量裁切所有圖片。</p>
           </div>
 
           <!-- 刪除背景設定 -->
           <div id="setting-removebg" class="hide space-y-3">
             <p class="text-xs text-slate-600 mb-2" data-i18n="rmbg_hint">使用純 Canvas 色彩比對進行去背 (不需載入 AI 模型)。</p>
-            
             <div class="space-y-2">
               <label class="block text-xs font-semibold text-slate-700" data-i18n="rmbg_color">選擇要去除的背景顏色</label>
               <input type="color" id="removebg-color" value="#ffffff" class="w-full h-8 rounded-lg cursor-pointer">
             </div>
-
             <div class="space-y-1 mt-3">
               <label class="block text-xs font-semibold text-slate-700" data-i18n="rmbg_tolerance">色彩容差度</label>
               <input type="range" id="removebg-tolerance" min="0" max="150" step="5" value="30" class="w-full accent-emerald-600">
@@ -181,7 +226,6 @@
                 <span data-i18n="rmbg_loose">寬鬆</span>
               </div>
             </div>
-
             <button onclick="applyColorRemoval()" class="w-full py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-bold rounded-lg transition mt-4 flex items-center justify-center space-x-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
               <span data-i18n="rmbg_btn">套用去背</span>
@@ -190,53 +234,76 @@
 
           <!-- 提升圖片質量設定 -->
           <div id="setting-upscale" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700 mb-2" data-i18n="upscale_label">高解析度放大倍率</label>
-            <div class="grid grid-cols-3 gap-2">
-              <button onclick="applyUpscale(2)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">2x</button>
-              <button onclick="applyUpscale(4)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">4x</button>
-              <button onclick="applyUpscale(8)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">8x</button>
+            <div class="flex items-center justify-between">
+              <label class="block text-sm font-semibold text-slate-700" data-i18n="upscale_label">高解析度放大倍率</label>
+              <span id="upscale-badge" class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md">2x</span>
             </div>
+            <div class="grid grid-cols-3 gap-2">
+              <button onclick="selectUpscaleFactor(2)" id="btn-upscale-2" class="upscale-opt py-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-700 rounded-xl text-sm font-bold transition">2x</button>
+              <button onclick="selectUpscaleFactor(4)" id="btn-upscale-4" class="upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">4x</button>
+              <button onclick="selectUpscaleFactor(8)" id="btn-upscale-8" class="upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">8x</button>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-tight" data-i18n="upscale_hint">選定倍率後，點擊下方按鈕即可批量放大所有圖片。</p>
           </div>
 
           <!-- 調整大小設定 -->
           <div id="setting-resize" class="hide space-y-3">
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="resize_w">寬度 (px)</label>
-                <input type="number" id="resize-w" class="w-full min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
-              </div>
-              <div>
-                <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="resize_h">高度 (px)</label>
-                <input type="number" id="resize-h" class="w-full min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
-              </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="resize_mode_label">縮放模式</label>
+              <select id="resize-mode" onchange="toggleResizeMode(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                <option value="pixels" data-i18n="resize_mode_px">指定像素尺寸 (px)</option>
+                <option value="percent" data-i18n="resize_mode_pct">按百分比縮放 (%)</option>
+              </select>
             </div>
-            <label class="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer mt-2">
-              <input type="checkbox" id="resize-aspect" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
-              <span data-i18n="resize_aspect">保持長寬比例</span>
-            </label>
-            <button onclick="applyResize()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition mt-2" data-i18n="resize_btn">套用尺寸</button>
+            <div id="resize-px-box" class="space-y-2">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="resize_w">寬度 (px)</label>
+                  <input type="number" id="resize-w" value="1920" min="1" class="w-full min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="resize_h">高度 (px)</label>
+                  <input type="number" id="resize-h" value="1080" min="1" class="w-full min-w-0 px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                </div>
+              </div>
+              <label class="flex items-center space-x-2 text-xs text-slate-700 cursor-pointer pt-1">
+                <input type="checkbox" id="resize-aspect" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                <span data-i18n="resize_aspect">依原圖比例自動計算高度</span>
+              </label>
+            </div>
+            <div id="resize-pct-box" class="hide space-y-2">
+              <div class="flex justify-between text-xs font-semibold text-slate-700">
+                <span data-i18n="resize_pct_label">縮放比例</span>
+                <span id="resize-pct-val" class="text-blue-600 font-bold">50%</span>
+              </div>
+              <input type="range" id="resize-pct-slider" min="10" max="200" step="5" value="50" class="w-full accent-blue-500">
+            </div>
           </div>
 
           <!-- 旋轉設定 -->
           <div id="setting-rotate" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700 mb-2" data-i18n="rotate_label">旋轉與翻轉</label>
+            <div class="flex items-center justify-between">
+              <label class="block text-sm font-semibold text-slate-700" data-i18n="rotate_label">旋轉角度設定</label>
+              <span id="rotate-angle-badge" class="px-2 py-0.5 bg-cyan-100 text-cyan-800 text-xs font-bold rounded-md">0°</span>
+            </div>
             <div class="grid grid-cols-2 gap-2">
-              <button onclick="applyRotate(-90)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
+              <button onclick="setBatchRotate(-90)" class="py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
                 <span data-i18n="rotate_left">左旋 90°</span>
               </button>
-              <button onclick="applyRotate(90)" class="py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
+              <button onclick="setBatchRotate(90)" class="py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"></path></svg>
                 <span data-i18n="rotate_right">右旋 90°</span>
               </button>
             </div>
+            <p class="text-[11px] text-slate-400 leading-tight" data-i18n="rotate_hint">可連續點擊調整角度，系統將套用至佇列中的所有圖片。</p>
           </div>
 
           <!-- 浮水印設定 -->
           <div id="setting-watermark" class="hide space-y-3">
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1" data-i18n="wm_label">文字浮水印</label>
-              <input type="text" id="wm-text" placeholder="輸入浮水印內容" value="ImgTools" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none">
+              <input type="text" id="wm-text" placeholder="輸入浮水印內容" value="ImgTools" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
@@ -245,39 +312,106 @@
               </div>
               <div>
                 <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="wm_opacity">透明度</label>
-                <input type="range" id="wm-alpha" min="0.1" max="1" step="0.1" value="0.7" class="w-full mt-2">
+                <input type="range" id="wm-alpha" min="0.1" max="1" step="0.1" value="0.7" class="w-full mt-2 accent-indigo-600">
               </div>
             </div>
-            <button onclick="applyWatermark()" class="w-full py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-bold rounded-lg transition mt-2" data-i18n="wm_btn">套用浮水印</button>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="wm_pos">浮水印位置</label>
+              <select id="wm-position" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                <option value="bottom-right" data-i18n="wm_pos_br">右下角</option>
+                <option value="bottom-left" data-i18n="wm_pos_bl">左下角</option>
+                <option value="top-right" data-i18n="wm_pos_tr">右上角</option>
+                <option value="top-left" data-i18n="wm_pos_tl">左上角</option>
+                <option value="center" data-i18n="wm_pos_center">正中央</option>
+              </select>
+            </div>
           </div>
-
         </div>
         
+        <!-- 進度條 (批量處理時顯示) -->
+        <div id="batch-progress-container" class="hide mt-4 space-y-1.5">
+          <div class="flex justify-between text-xs font-semibold text-blue-600">
+            <span id="batch-progress-label">處理中...</span>
+            <span id="batch-progress-percent">0%</span>
+          </div>
+          <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+            <div id="batch-progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-150" style="width: 0%"></div>
+          </div>
+        </div>
+
         <!-- 操作按鈕區 -->
-        <div class="mt-6 pt-4 border-t border-slate-200">
-          <button id="btn-download" onclick="downloadImage()" disabled class="w-full py-3.5 px-4 bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+        <div class="mt-6 pt-4 border-t border-slate-200 space-y-2">
+          <button id="btn-download" onclick="handleDownloadAction()" disabled class="w-full py-3.5 px-4 bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            <span data-i18n="download_btn">處理並下載</span>
+            <span id="btn-download-text" data-i18n="download_btn">處理並下載</span>
+          </button>
+          <button id="btn-clear-batch" onclick="clearBatchFiles()" class="hide w-full py-2 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition" data-i18n="clear_all">
+            清空所有圖片
           </button>
         </div>
       </div>
 
-      <!-- 右側：畫布/預覽區 -->
-      <div class="flex-grow bg-slate-800 p-4 md:p-8 flex items-center justify-center relative overflow-hidden min-h-[400px] bg-checkerboard">
-        <div id="preview-placeholder" class="text-center text-slate-300 flex flex-col items-center bg-slate-800/80 p-6 rounded-2xl backdrop-blur-sm">
-          <svg class="w-16 h-16 mb-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-          <p data-i18n="preview_empty">尚未載入圖片，請從左側上傳</p>
+      <!-- 右側：畫布/預覽區 或 批量清單區 -->
+      <div class="flex-grow bg-slate-800 p-4 md:p-6 flex flex-col relative overflow-hidden min-h-[450px] bg-checkerboard">
+        
+        <!-- 空狀態佔位符 -->
+        <div id="preview-placeholder" class="m-auto text-center text-slate-300 flex flex-col items-center bg-slate-800/85 p-8 rounded-2xl backdrop-blur-sm max-w-md border border-slate-700/50">
+          <svg class="w-16 h-16 mb-4 opacity-75 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <p id="placeholder-main-text" class="font-medium text-base" data-i18n="preview_empty">尚未載入圖片，請從左側上傳</p>
+          <p id="placeholder-sub-text" class="hide text-xs text-slate-400 mt-2" data-i18n="preview_empty_batch">可一次選取最多 100 張圖片進行批量處理</p>
         </div>
         
-        <canvas id="main-canvas" class="hide max-w-full max-h-full object-contain shadow-2xl rounded"></canvas>
+        <!-- 單圖 Canvas 預覽 -->
+        <div id="single-canvas-wrapper" class="hide m-auto flex items-center justify-center w-full h-full">
+          <canvas id="main-canvas" class="max-w-full max-h-[550px] object-contain shadow-2xl rounded"></canvas>
+        </div>
         
-        <div id="cropper-container" class="hide cropper-container-wrapper w-full h-full flex items-center justify-center">
+        <!-- 單圖 Cropper 預覽 -->
+        <div id="cropper-container" class="hide m-auto cropper-container-wrapper w-full h-full flex items-center justify-center">
           <img id="crop-image" class="max-w-full max-h-full" src="" alt="Cropper Image">
         </div>
+
+        <!-- 批量圖片列表視圖 (支援高達 100 張) -->
+        <div id="batch-list-view" class="hide w-full h-full flex flex-col bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-700 p-4 text-slate-200">
+          <!-- 批量裁切專屬即時比例預覽面板 -->
+          <div id="batch-crop-preview-box" class="hide mb-3 bg-slate-800/95 border border-slate-700 rounded-xl p-3">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-blue-400 flex items-center space-x-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                <span id="crop-preview-filename">裁切比例預覽</span>
+              </span>
+              <span class="text-[11px] text-slate-400" data-i18n="crop_preview_tip">拖曳框線可自訂比例並同步至全部圖片</span>
+            </div>
+            <div class="w-full h-48 sm:h-56 bg-slate-950 rounded-lg overflow-hidden flex items-center justify-center">
+              <img id="batch-crop-image" class="max-w-full max-h-full block" src="" alt="Batch Crop Preview">
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-700/80">
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-white text-sm sm:text-base" data-i18n="batch_queue_title">批量處理佇列</span>
+              <span id="batch-count-badge" class="px-2.5 py-0.5 bg-blue-600 text-white text-xs font-bold rounded-full">0 / 100</span>
+            </div>
+            <label class="cursor-pointer px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition flex items-center space-x-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              <span data-i18n="batch_add_more">繼續新增圖片</span>
+              <input type="file" id="batch-add-input" multiple accept="image/*,.heic,.heif" class="hidden">
+            </label>
+          </div>
+
+          <!-- 捲動列表區 -->
+          <div id="batch-items-container" class="flex-grow overflow-y-auto custom-scrollbar space-y-2 max-h-[480px] pr-1">
+            <!-- JS 動態生成項目 -->
+          </div>
+        </div>
+
       </div>
 
     </div>
   </main>
+
+  <!-- Toast 訊息通知容器 -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <footer class="bg-white border-t border-slate-200 mt-auto py-6 text-center text-sm text-slate-500" data-i18n="footer_text">
     ImgTools - 基於 HTML5 Canvas, Cropper.js 的純本機端圖片處理工具。無需伺服器，無隱私風險。
@@ -293,38 +427,61 @@
         home_desc: '你的純前端本機圖片編輯器就在這裡，而且永遠免費！<br>圖片不會上傳至任何伺服器，完全保障您的隱私安全。',
         filter_all: '全部', filter_optimize: '最佳化', filter_edit: '編輯', filter_convert: '轉換',
         ws_back: '返回所有工具',
-        upload_title: '選擇圖片檔案', upload_desc: '支援 HEIC, JPG, PNG 等', loading: '處理中...',
+        batch_supported: '支援最多 100 張批量處理',
+        upload_title: '選擇圖片檔案', upload_desc: '支援 HEIC, JPG, PNG 等',
+        upload_title_batch: '選擇多張圖片 (最多 100 張)', upload_desc_batch: '支援批量拖曳或選取 HEIC, JPG, PNG, WEBP',
+        loading: '處理中...',
         settings_title: '工具設定',
         convert_label: '選擇輸出格式',
-        compress_label: '圖片品質 (壓縮率)', compress_hint: '提示：僅對 JPG 與 WEBP 有效。數值越小檔案越小，但畫質越低。',
-        crop_label: '裁切比例', crop_free: '自由拖曳', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (標準)', crop_16_9: '16:9 (寬螢幕)', crop_btn: '套用裁切尺寸',
+        convert_quality: '輸出畫質 (適用於 JPG/WEBP)',
+        compress_label: '圖片品質 (壓縮率)',
+        compress_format_label: '壓縮輸出格式',
+        compress_hint: '提示：數值越小檔案越小，但畫質越低。批量處理時將套用至所有圖片。',
+        crop_label: '批量裁切比例 (自動置中裁切)', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (標準橫向)', crop_3_4: '3:4 (標準直向)', crop_16_9: '16:9 (寬螢幕)', crop_9_16: '9:16 (手機直向)', crop_custom: '自訂寬高比 / 拖曳框選',
+        crop_ratio_w: '比例寬', crop_ratio_h: '比例高',
+        crop_anchor_label: '裁切對齊位置', crop_anchor_center: '正中央 (預設)', crop_anchor_top: '靠上 / 靠左對齊 (保留人像頭部)', crop_anchor_bottom: '靠下 / 靠右對齊',
+        crop_batch_hint: '提示：可在右側預覽框微調比例，點擊下方按鈕即可依設定比例批量裁切所有圖片。',
+        crop_preview_tip: '拖曳框線可自訂比例並同步至全部圖片',
         rmbg_hint: '使用純 Canvas 色彩比對進行去背 (不需載入 AI 模型)。', rmbg_color: '選擇要去除的背景顏色', rmbg_tolerance: '色彩容差度', rmbg_strict: '嚴格', rmbg_loose: '寬鬆', rmbg_btn: '套用去背',
-        upscale_label: '高解析度放大倍率',
-        resize_w: '寬度 (px)', resize_h: '高度 (px)', resize_aspect: '保持長寬比例', resize_btn: '套用尺寸',
-        rotate_label: '旋轉與翻轉', rotate_left: '左旋 90°', rotate_right: '右旋 90°',
-        wm_label: '文字浮水印', wm_color: '顏色', wm_opacity: '透明度', wm_btn: '套用浮水印',
-        download_btn: '處理並下載', preview_empty: '尚未載入圖片，請從左側上傳',
+        upscale_label: '高解析度放大倍率', upscale_hint: '選定倍率後，點擊下方按鈕即可批量放大所有圖片。',
+        resize_mode_label: '縮放模式', resize_mode_px: '指定像素尺寸 (px)', resize_mode_pct: '按百分比縮放 (%)',
+        resize_w: '寬度 (px)', resize_h: '高度 (px)', resize_aspect: '依原圖比例自動計算高度', resize_pct_label: '縮放比例',
+        rotate_label: '旋轉角度設定', rotate_left: '左旋 90°', rotate_right: '右旋 90°', rotate_hint: '可連續點擊調整角度，系統將套用至佇列中的所有圖片。',
+        wm_label: '文字浮水印', wm_color: '顏色', wm_opacity: '透明度', wm_pos: '浮水印位置',
+        wm_pos_br: '右下角', wm_pos_bl: '左下角', wm_pos_tr: '右上角', wm_pos_tl: '左上角', wm_pos_center: '正中央',
+        download_btn: '處理並下載',
+        download_batch_btn: '批量處理並逐張下載',
+        download_single_batch_btn: '處理並下載圖片',
+        clear_all: '清空所有圖片',
+        preview_empty: '尚未載入圖片，請從左側上傳',
+        preview_empty_batch: '可一次選取最多 100 張圖片進行批量處理',
+        batch_queue_title: '批量處理佇列',
+        batch_add_more: '繼續新增圖片',
+        status_ready: '等待處理',
+        status_processing: '處理中...',
+        status_done: '完成',
+        status_error: '失敗',
         footer_text: 'ImgTools - 基於 HTML5 Canvas, Cropper.js 的純本機端圖片處理工具。無需伺服器，無隱私風險。',
         
         // 工具名稱與描述
-        t_convert_title: '格式轉換', t_convert_desc: '輕鬆轉換 PNG, PSD, SVG, WEBP, HEIC 等格式至 JPG / PNG。',
-        t_compress_title: '壓縮圖片', t_compress_desc: '降低檔案大小同時保持視覺品質',
-        t_crop_title: '裁剪圖片', t_crop_desc: '框選特定區域進行自由或等比裁切',
-        t_resize_title: '調整大小', t_resize_desc: '按自訂像素尺寸縮放，不失真',
+        t_convert_title: '格式轉換 (支援100張)', t_convert_desc: '批量轉換 HEIC, PNG, WEBP, SVG 等格式至 JPG / PNG / WEBP。',
+        t_compress_title: '壓縮圖片 (支援100張)', t_compress_desc: '批量降低檔案大小同時保持視覺品質，直接逐張下載。',
+        t_crop_title: '裁剪圖片 (支援100張)', t_crop_desc: '批量依指定長寬比或自訂比例裁切最多 100 張圖片。',
+        t_resize_title: '調整大小 (支援100張)', t_resize_desc: '批量按自訂像素尺寸或百分比縮放圖片。',
         t_removebg_title: '刪除背景', t_removebg_desc: '運用色彩容差演算法去背，完全支援本機直接執行。',
-        t_upscale_title: '提升圖片質量', t_upscale_desc: '以高解析度放大圖像，保持高視覺品質',
-        t_rotate_title: '旋轉圖片', t_rotate_desc: '90度無損旋轉您的照片',
-        t_watermark_title: '加入浮水印', t_watermark_desc: '快速為圖片加上文字保護標記',
+        t_upscale_title: '提升圖片質量 (支援100張)', t_upscale_desc: '批量以 2x / 4x / 8x 高解析度平滑放大圖像。',
+        t_rotate_title: '旋轉圖片 (支援100張)', t_rotate_desc: '批量 90 度旋轉您的照片並自動保留原畫質。',
+        t_watermark_title: '加入浮水印 (支援100張)', t_watermark_desc: '批量為最多 100 張圖片加上自訂文字保護標記。',
 
-        // 提示訊息 (Alerts)
+        // 提示訊息
         msg_crop_success: '✅ 裁切完成！請點擊「處理並下載」。',
-        msg_resize_success: '✅ 尺寸已成功套用！',
         msg_resize_err: '請輸入有效的寬度與高度',
-        msg_wm_success: '✅ 浮水印已套用！',
-        msg_up_success: '✅ 成功提升解析度',
         msg_rmbg_success: '✅ 去背完成！請點擊下方按鈕下載 PNG (保留透明背景)。',
         msg_need_upload: '請先上傳圖片',
-        msg_reading: '讀取圖片中...', msg_processing: '像素分析去背中...'
+        msg_reading: '讀取圖片中...', msg_processing: '像素分析去背中...',
+        msg_limit_100: '⚠️ 最多支援 100 張圖片！已自動截取前 100 張。',
+        msg_batch_done: '🎉 批量處理完成！已自動逐張下載所有圖片。',
+        msg_downloading_files: '正在逐張下載圖片...'
       },
       'zh-CN': {
         header_local: '100% 本地运行',
@@ -332,73 +489,119 @@
         home_desc: '你的纯前端本地图片编辑器就在这里，而且永远免费！<br>图片不会上传至任何服务器，完全保障您的隐私安全。',
         filter_all: '全部', filter_optimize: '优化', filter_edit: '编辑', filter_convert: '转换',
         ws_back: '返回所有工具',
-        upload_title: '选择图片文件', upload_desc: '支持 HEIC, JPG, PNG 等', loading: '处理中...',
+        batch_supported: '支持最多 100 张批量处理',
+        upload_title: '选择图片文件', upload_desc: '支持 HEIC, JPG, PNG 等',
+        upload_title_batch: '选择多张图片 (最多 100 张)', upload_desc_batch: '支持批量拖拽或选取 HEIC, JPG, PNG, WEBP',
+        loading: '处理中...',
         settings_title: '工具设置',
         convert_label: '选择输出格式',
-        compress_label: '图片质量 (压缩率)', compress_hint: '提示：仅对 JPG 与 WEBP 有效。数值越小文件越小，但画质越低。',
-        crop_label: '裁剪比例', crop_free: '自由拖拽', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (标准)', crop_16_9: '16:9 (宽屏)', crop_btn: '应用裁剪尺寸',
+        convert_quality: '输出画质 (适用于 JPG/WEBP)',
+        compress_label: '图片质量 (压缩率)',
+        compress_format_label: '压缩输出格式',
+        compress_hint: '提示：数值越小文件越小，但画质越低。批量处理时将应用至所有图片。',
+        crop_label: '批量裁剪比例 (自动居中裁剪)', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (标准横向)', crop_3_4: '3:4 (标准纵向)', crop_16_9: '16:9 (宽屏)', crop_9_16: '9:16 (手机竖屏)', crop_custom: '自定义宽高比 / 拖拽框选',
+        crop_ratio_w: '比例宽', crop_ratio_h: '比例高',
+        crop_anchor_label: '裁剪对齐位置', crop_anchor_center: '正中央 (默认)', crop_anchor_top: '靠上 / 靠左对齐 (保留人像头部)', crop_anchor_bottom: '靠下 / 靠右对齐',
+        crop_batch_hint: '提示：可在右侧预览框微调比例，点击下方按钮即可依设定比例批量裁剪所有图片。',
+        crop_preview_tip: '拖拽框线可自定义比例并同步至全部图片',
         rmbg_hint: '使用纯 Canvas 色彩比对进行抠图 (无需加载 AI 模型)。', rmbg_color: '选择要去除的背景颜色', rmbg_tolerance: '色彩容差度', rmbg_strict: '严格', rmbg_loose: '宽松', rmbg_btn: '应用抠图',
-        upscale_label: '高分辨率放大倍率',
-        resize_w: '宽度 (px)', resize_h: '高度 (px)', resize_aspect: '保持长宽比例', resize_btn: '应用尺寸',
-        rotate_label: '旋转与翻转', rotate_left: '左旋 90°', rotate_right: '右旋 90°',
-        wm_label: '文字水印', wm_color: '颜色', wm_opacity: '透明度', wm_btn: '应用水印',
-        download_btn: '处理并下载', preview_empty: '尚未加载图片，请从左侧上传',
+        upscale_label: '高分辨率放大倍率', upscale_hint: '选定倍率后，点击下方按钮即可批量放大所有图片。',
+        resize_mode_label: '缩放模式', resize_mode_px: '指定像素尺寸 (px)', resize_mode_pct: '按百分比缩放 (%)',
+        resize_w: '宽度 (px)', resize_h: '高度 (px)', resize_aspect: '依原图比例自动计算高度', resize_pct_label: '缩放比例',
+        rotate_label: '旋转角度设置', rotate_left: '左旋 90°', rotate_right: '右旋 90°', rotate_hint: '可连续点击调整角度，系统将应用至队列中的所有图片。',
+        wm_label: '文字水印', wm_color: '颜色', wm_opacity: '透明度', wm_pos: '水印位置',
+        wm_pos_br: '右下角', wm_pos_bl: '左下角', wm_pos_tr: '右上角', wm_pos_tl: '左上角', wm_pos_center: '正中央',
+        download_btn: '处理并下载',
+        download_batch_btn: '批量处理并逐张下载',
+        download_single_batch_btn: '处理并下载图片',
+        clear_all: '清空所有图片',
+        preview_empty: '尚未加载图片，请从左侧上传',
+        preview_empty_batch: '可一次选取最多 100 张图片进行批量处理',
+        batch_queue_title: '批量处理队列',
+        batch_add_more: '继续添加图片',
+        status_ready: '等待处理',
+        status_processing: '处理中...',
+        status_done: '完成',
+        status_error: '失败',
         footer_text: 'ImgTools - 基于 HTML5 Canvas, Cropper.js 的纯本地端图片处理工具。无需服务器，无隐私风险。',
         
-        t_convert_title: '格式转换', t_convert_desc: '轻松转换 PNG, PSD, SVG, WEBP, HEIC 等格式至 JPG / PNG。',
-        t_compress_title: '压缩图片', t_compress_desc: '降低文件大小同时保持视觉质量',
-        t_crop_title: '裁剪图片', t_crop_desc: '框选特定区域进行自由或等比裁剪',
-        t_resize_title: '调整大小', t_resize_desc: '按自定义像素尺寸缩放，不失真',
+        t_convert_title: '格式转换 (支持100张)', t_convert_desc: '批量转换 HEIC, PNG, WEBP, SVG 等格式至 JPG / PNG / WEBP。',
+        t_compress_title: '压缩图片 (支持100张)', t_compress_desc: '批量降低文件大小同时保持视觉质量，直接逐张下载。',
+        t_crop_title: '裁剪图片 (支持100张)', t_crop_desc: '批量依指定长宽比或自定义比例裁剪最多 100 张图片。',
+        t_resize_title: '调整大小 (支持100张)', t_resize_desc: '批量按自定义像素尺寸或百分比缩放图片。',
         t_removebg_title: '删除背景', t_removebg_desc: '运用色彩容差算法抠图，完全支持本地直接运行。',
-        t_upscale_title: '提升图片质量', t_upscale_desc: '以高分辨率放大图像，保持高视觉质量',
-        t_rotate_title: '旋转图片', t_rotate_desc: '90度无损旋转您的照片',
-        t_watermark_title: '加入水印', t_watermark_desc: '快速为图片加上文字保护标记',
+        t_upscale_title: '提升图片质量 (支持100张)', t_upscale_desc: '批量以 2x / 4x / 8x 高分辨率平滑放大图像。',
+        t_rotate_title: '旋转图片 (支持100张)', t_rotate_desc: '批量 90 度旋转您的照片并自动保留原画质。',
+        t_watermark_title: '加入水印 (支持100张)', t_watermark_desc: '批量为最多 100 张图片加上自定义文字保护标记。',
 
         msg_crop_success: '✅ 裁剪完成！请点击“处理并下载”。',
-        msg_resize_success: '✅ 尺寸已成功应用！',
         msg_resize_err: '请输入有效的宽度与高度',
-        msg_wm_success: '✅ 水印已应用！',
-        msg_up_success: '✅ 成功提升分辨率',
         msg_rmbg_success: '✅ 抠图完成！请点击下方按钮下载 PNG (保留透明背景)。',
         msg_need_upload: '请先上传图片',
-        msg_reading: '读取图片中...', msg_processing: '像素分析抠图中...'
+        msg_reading: '读取图片中...', msg_processing: '像素分析抠图中...',
+        msg_limit_100: '⚠️ 最多支持 100 张图片！已自动截取前 100 张。',
+        msg_batch_done: '🎉 批量处理完成！已自动逐张下载所有图片。',
+        msg_downloading_files: '正在逐张下载图片...'
       },
       'en': {
         header_local: '100% Local Processing',
-        home_title: 'All Tools for Image Editing',
+        home_title: 'All Tools for Batch Image Editing',
         home_desc: 'Your purely frontend local image editor is here, and always free!<br>Images are never uploaded to any server, fully protecting your privacy.',
         filter_all: 'All', filter_optimize: 'Optimize', filter_edit: 'Edit', filter_convert: 'Convert',
         ws_back: 'Back to all tools',
-        upload_title: 'Select Image File', upload_desc: 'Supports HEIC, JPG, PNG, etc.', loading: 'Processing...',
+        batch_supported: 'Supports up to 100 images in batch',
+        upload_title: 'Select Image File', upload_desc: 'Supports HEIC, JPG, PNG, etc.',
+        upload_title_batch: 'Select Images (Max 100)', upload_desc_batch: 'Batch select HEIC, JPG, PNG, WEBP',
+        loading: 'Processing...',
         settings_title: 'Tool Settings',
         convert_label: 'Select Output Format',
-        compress_label: 'Image Quality (Compression)', compress_hint: 'Note: Only applies to JPG and WEBP. Lower values mean smaller size but lower quality.',
-        crop_label: 'Crop Ratio', crop_free: 'Free Drag', crop_1_1: '1:1 (Square)', crop_4_3: '4:3 (Standard)', crop_16_9: '16:9 (Widescreen)', crop_btn: 'Apply Crop',
+        convert_quality: 'Output Quality (JPG/WEBP)',
+        compress_label: 'Image Quality (Compression)',
+        compress_format_label: 'Output Format',
+        compress_hint: 'Note: Lower values mean smaller size but lower quality. Applied to all images in batch.',
+        crop_label: 'Batch Crop Aspect Ratio', crop_1_1: '1:1 (Square)', crop_4_3: '4:3 (Landscape)', crop_3_4: '3:4 (Portrait)', crop_16_9: '16:9 (Widescreen)', crop_9_16: '9:16 (Story/Vertical)', crop_custom: 'Custom Ratio / Drag Box',
+        crop_ratio_w: 'Ratio W', crop_ratio_h: 'Ratio H',
+        crop_anchor_label: 'Crop Alignment', crop_anchor_center: 'Center (Default)', crop_anchor_top: 'Top / Left Align (Keep Heads)', crop_anchor_bottom: 'Bottom / Right Align',
+        crop_batch_hint: 'Tip: Adjust the preview box on the right, then click below to batch crop all queued images.',
+        crop_preview_tip: 'Drag box to sync custom aspect ratio to all images',
         rmbg_hint: 'Uses pure Canvas color matching for background removal (No AI model needed).', rmbg_color: 'Select background color to remove', rmbg_tolerance: 'Color Tolerance', rmbg_strict: 'Strict', rmbg_loose: 'Loose', rmbg_btn: 'Apply Background Removal',
-        upscale_label: 'Upscale Multiplier',
-        resize_w: 'Width (px)', resize_h: 'Height (px)', resize_aspect: 'Keep Aspect Ratio', resize_btn: 'Apply Size',
-        rotate_label: 'Rotate & Flip', rotate_left: 'Rotate Left 90°', rotate_right: 'Rotate Right 90°',
-        wm_label: 'Text Watermark', wm_color: 'Color', wm_opacity: 'Opacity', wm_btn: 'Apply Watermark',
-        download_btn: 'Process & Download', preview_empty: 'No image loaded, please upload from the left',
+        upscale_label: 'Upscale Multiplier', upscale_hint: 'Select a multiplier and click the button below to batch upscale all images.',
+        resize_mode_label: 'Resize Mode', resize_mode_px: 'Fixed Pixels (px)', resize_mode_pct: 'Scale Percentage (%)',
+        resize_w: 'Width (px)', resize_h: 'Height (px)', resize_aspect: 'Auto-calculate height by aspect ratio', resize_pct_label: 'Scale Percentage',
+        rotate_label: 'Rotation Angle', rotate_left: 'Rotate Left 90°', rotate_right: 'Rotate Right 90°', rotate_hint: 'Click repeatedly to adjust angle; applies to all queued images.',
+        wm_label: 'Text Watermark', wm_color: 'Color', wm_opacity: 'Opacity', wm_pos: 'Position',
+        wm_pos_br: 'Bottom Right', wm_pos_bl: 'Bottom Left', wm_pos_tr: 'Top Right', wm_pos_tl: 'Top Left', wm_pos_center: 'Center',
+        download_btn: 'Process & Download',
+        download_batch_btn: 'Batch Process & Download All',
+        download_single_batch_btn: 'Process & Download Image',
+        clear_all: 'Clear All Images',
+        preview_empty: 'No image loaded, please upload from the left',
+        preview_empty_batch: 'Select up to 100 images at once for batch processing',
+        batch_queue_title: 'Batch Queue',
+        batch_add_more: 'Add More Images',
+        status_ready: 'Ready',
+        status_processing: 'Processing...',
+        status_done: 'Done',
+        status_error: 'Error',
         footer_text: 'ImgTools - A pure local image processing tool based on HTML5 Canvas & Cropper.js. No servers, no privacy risks.',
         
-        t_convert_title: 'Convert Format', t_convert_desc: 'Easily convert PNG, PSD, SVG, WEBP, HEIC formats to JPG / PNG.',
-        t_compress_title: 'Compress Image', t_compress_desc: 'Reduce file size while maintaining visual quality.',
-        t_crop_title: 'Crop Image', t_crop_desc: 'Select a specific area for free or aspect-ratio cropping.',
-        t_resize_title: 'Resize', t_resize_desc: 'Scale by custom pixel dimensions without distortion.',
+        t_convert_title: 'Convert Format (Up to 100)', t_convert_desc: 'Batch convert HEIC, PNG, WEBP, SVG formats to JPG / PNG / WEBP.',
+        t_compress_title: 'Compress Image (Up to 100)', t_compress_desc: 'Batch reduce file size while maintaining visual quality and download directly.',
+        t_crop_title: 'Crop Image (Up to 100)', t_crop_desc: 'Batch crop up to 100 images by preset or custom aspect ratio.',
+        t_resize_title: 'Resize (Up to 100)', t_resize_desc: 'Batch scale by custom pixel dimensions or percentage.',
         t_removebg_title: 'Remove Background', t_removebg_desc: 'Uses color tolerance algorithms to remove backgrounds entirely locally.',
-        t_upscale_title: 'Upscale Quality', t_upscale_desc: 'Enlarge images at high resolution while maintaining visual quality.',
-        t_rotate_title: 'Rotate Image', t_rotate_desc: 'Losslessly rotate your photos by 90 degrees.',
-        t_watermark_title: 'Add Watermark', t_watermark_desc: 'Quickly add text protection marks to images.',
+        t_upscale_title: 'Upscale Quality (Up to 100)', t_upscale_desc: 'Batch enlarge images at 2x / 4x / 8x high resolution.',
+        t_rotate_title: 'Rotate Image (Up to 100)', t_rotate_desc: 'Batch rotate your photos by 90 degrees while preserving quality.',
+        t_watermark_title: 'Add Watermark (Up to 100)', t_watermark_desc: 'Batch add custom text protection marks to up to 100 images.',
 
         msg_crop_success: '✅ Crop complete! Please click "Process & Download".',
-        msg_resize_success: '✅ Size successfully applied!',
         msg_resize_err: 'Please enter valid width and height',
-        msg_wm_success: '✅ Watermark applied!',
-        msg_up_success: '✅ Successfully upscaled resolution',
         msg_rmbg_success: '✅ Background removed! Click download below for PNG (keeps transparency).',
         msg_need_upload: 'Please upload an image first',
-        msg_reading: 'Reading image...', msg_processing: 'Analyzing pixels for background removal...'
+        msg_reading: 'Reading image...', msg_processing: 'Analyzing pixels for background removal...',
+        msg_limit_100: '⚠️ Maximum 100 images supported! Kept the first 100.',
+        msg_batch_done: '🎉 Batch processing complete! Downloading all images.',
+        msg_downloading_files: 'Downloading images...'
       }
     };
 
@@ -408,12 +611,41 @@
       return i18n[currentLang][key] || key;
     }
 
+    // 自訂 Toast 提示 (取代 alert())
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgColors = {
+        info: 'bg-slate-800 text-white border-slate-700',
+        success: 'bg-emerald-600 text-white border-emerald-500',
+        warning: 'bg-amber-500 text-white border-amber-400',
+        error: 'bg-rose-600 text-white border-rose-500'
+      };
+      toast.className = `toast-enter pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center space-x-2 max-w-sm ${bgColors[type] || bgColors.info}`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function formatBytes(bytes, decimals = 1) {
+      if (!+bytes) return '0 B';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+    }
+
     function applyTranslations() {
-      // 靜態標籤翻譯
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (i18n[currentLang][key]) {
-          // 若有包含 HTML 標籤，使用 innerHTML，否則 textContent
           if(i18n[currentLang][key].includes('<br>')) {
             el.innerHTML = i18n[currentLang][key];
           } else {
@@ -421,45 +653,54 @@
           }
         }
       });
-      // 更新 html lang 標籤
       document.getElementById('html-root').lang = currentLang;
-      // 重新渲染網格以套用工具的翻譯
       renderGrid(window.currentFilter || 'all');
-      // 如果處於工作區，更新標題和描述
       if (appState.activeTool) {
         document.getElementById('ws-title').textContent = t('t_' + appState.activeTool.id + '_title');
         document.getElementById('ws-desc').textContent = t('t_' + appState.activeTool.id + '_desc');
+        updateWorkspaceModeUI();
       }
     }
 
-    // 綁定切換語言事件
-    document.addEventListener('DOMContentLoaded', () => {
-      const langSwitcher = document.getElementById('lang-switcher');
-      langSwitcher.value = currentLang;
-      langSwitcher.addEventListener('change', (e) => {
-        currentLang = e.target.value;
-        localStorage.setItem('imgtools_lang', currentLang);
-        applyTranslations();
-      });
-    });
+    // --- 2. 工具資料與狀態定義 ---
+    const MAX_BATCH_FILES = 100;
+    const BATCH_TOOLS = ['convert', 'compress', 'crop', 'resize', 'upscale', 'rotate', 'watermark'];
 
-    // --- 2. 原始工具資料與邏輯定義 ---
     const toolsData = [
-      { id: 'convert', category: 'convert', color: 'bg-yellow-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>' },
-      { id: 'compress', category: 'optimize', color: 'bg-green-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>' },
-      { id: 'crop', category: 'edit', color: 'bg-blue-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>' },
-      { id: 'resize', category: 'edit', color: 'bg-blue-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>' },
-      { id: 'removebg', category: 'optimize', color: 'bg-emerald-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>' },
-      { id: 'upscale', category: 'optimize', color: 'bg-emerald-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>' },
-      { id: 'rotate', category: 'edit', color: 'bg-cyan-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>' },
-      { id: 'watermark', category: 'edit', color: 'bg-indigo-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>' }
+      { id: 'convert', category: 'convert', batch: true, color: 'bg-yellow-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>' },
+      { id: 'compress', category: 'optimize', batch: true, color: 'bg-green-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>' },
+      { id: 'crop', category: 'edit', batch: true, color: 'bg-blue-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>' },
+      { id: 'resize', category: 'edit', batch: true, color: 'bg-blue-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>' },
+      { id: 'removebg', category: 'optimize', batch: false, color: 'bg-emerald-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>' },
+      { id: 'upscale', category: 'optimize', batch: true, color: 'bg-emerald-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>' },
+      { id: 'rotate', category: 'edit', batch: true, color: 'bg-cyan-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>' },
+      { id: 'watermark', category: 'edit', batch: true, color: 'bg-indigo-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>' }
     ];
 
-    window.appState = { originalImage: null, activeTool: null, cropperInstance: null };
-    window.currentFilter = 'all'; // 記錄當前過濾器狀態
+    window.appState = { 
+      originalImage: null, 
+      activeTool: null, 
+      cropperInstance: null,
+      batchCropperInstance: null,
+      previewCropItemId: null,
+      batchCropRatio: 1,
+      batchFiles: [], // { id, file, name, originalSize, newSize, dimensionsText, status, thumbUrl, resultBlob, outName }
+      isProcessingBatch: false,
+      batchRotateDeg: 0,
+      batchUpscaleFactor: 2
+    };
+    window.currentFilter = 'all';
 
     document.addEventListener('DOMContentLoaded', () => {
       try {
+        const langSwitcher = document.getElementById('lang-switcher');
+        langSwitcher.value = currentLang;
+        langSwitcher.addEventListener('change', (e) => {
+          currentLang = e.target.value;
+          localStorage.setItem('imgtools_lang', currentLang);
+          applyTranslations();
+        });
+
         const canvas = document.getElementById('main-canvas');
         const ctx = canvas ? canvas.getContext('2d') : null;
 
@@ -471,14 +712,20 @@
           toolsData.forEach(tool => {
             if (filter !== 'all' && tool.category !== filter) return;
             const card = document.createElement('div');
-            card.className = 'tool-card bg-white rounded-2xl p-5 border border-slate-200 cursor-pointer relative';
+            card.className = 'tool-card bg-white rounded-2xl p-5 border border-slate-200 cursor-pointer relative flex flex-col';
             card.onclick = () => openWorkspace(tool.id);
+            
+            const batchTag = tool.batch 
+              ? `<span class="absolute top-4 right-4 px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 text-[10px] font-bold rounded-full">100張批量</span>` 
+              : '';
+
             card.innerHTML = `
-              <div class="w-12 h-12 rounded-xl ${tool.color} flex items-center justify-center text-white mb-4">
+              ${batchTag}
+              <div class="w-12 h-12 rounded-xl ${tool.color} flex items-center justify-center text-white mb-4 shadow-sm">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${tool.icon}</svg>
               </div>
               <h3 class="font-bold text-slate-800 text-lg mb-1">${t('t_' + tool.id + '_title')}</h3>
-              <p class="text-xs text-slate-500 leading-relaxed">${t('t_' + tool.id + '_desc')}</p>
+              <p class="text-xs text-slate-500 leading-relaxed flex-grow">${t('t_' + tool.id + '_desc')}</p>
             `;
             gridEl.appendChild(card);
           });
@@ -495,14 +742,45 @@
         };
 
         window.goHome = function() {
+          if (appState.isProcessingBatch) return;
           document.getElementById('view-workspace').classList.add('hide');
           document.getElementById('view-home').classList.remove('hide');
           resetWorkspace();
         };
 
+        window.updateWorkspaceModeUI = function() {
+          if (!appState.activeTool) return;
+          const isBatch = BATCH_TOOLS.includes(appState.activeTool.id);
+          const fileInput = document.getElementById('file-input');
+          
+          if (isBatch) {
+            fileInput.setAttribute('multiple', 'multiple');
+            document.getElementById('batch-badge').classList.remove('hide');
+            document.getElementById('upload-title-text').textContent = t('upload_title_batch');
+            document.getElementById('upload-desc-text').textContent = t('upload_desc_batch');
+            document.getElementById('placeholder-sub-text').classList.remove('hide');
+            
+            if (appState.batchFiles.length > 1) {
+              document.getElementById('btn-download-text').textContent = t('download_batch_btn');
+            } else if (appState.batchFiles.length === 1) {
+              document.getElementById('btn-download-text').textContent = t('download_single_batch_btn');
+            } else {
+              document.getElementById('btn-download-text').textContent = t('download_batch_btn');
+            }
+          } else {
+            fileInput.removeAttribute('multiple');
+            document.getElementById('batch-badge').classList.add('hide');
+            document.getElementById('upload-title-text').textContent = t('upload_title');
+            document.getElementById('upload-desc-text').textContent = t('upload_desc');
+            document.getElementById('placeholder-sub-text').classList.add('hide');
+            document.getElementById('btn-download-text').textContent = t('download_btn');
+          }
+        };
+
         window.openWorkspace = function(toolId) {
           const tool = toolsData.find(t => t.id === toolId);
           if(!tool) return;
+          resetWorkspace();
           appState.activeTool = tool;
           
           document.getElementById('view-home').classList.add('hide');
@@ -512,29 +790,65 @@
           document.getElementById('ws-desc').textContent = t('t_' + tool.id + '_desc');
           
           const iconEl = document.getElementById('ws-icon');
-          iconEl.className = `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm ${tool.color}`;
+          iconEl.className = `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0 ${tool.color}`;
           iconEl.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${tool.icon}</svg>`;
           
           document.querySelectorAll('#settings-panel > div[id^="setting-"]').forEach(el => el.classList.add('hide'));
           const targetSetting = document.getElementById(`setting-${tool.id}`);
           if(targetSetting) targetSetting.classList.remove('hide');
 
-          if (appState.originalImage) setupToolUI();
+          updateWorkspaceModeUI();
         };
 
         function resetWorkspace() {
           appState.originalImage = null;
-          canvas.classList.add('hide');
+          // 釋放 ObjectURL 避免記憶體洩漏
+          appState.batchFiles.forEach(item => {
+            if (item.thumbUrl) URL.revokeObjectURL(item.thumbUrl);
+          });
+          appState.batchFiles = [];
+          appState.isProcessingBatch = false;
+          appState.batchRotateDeg = 0;
+          appState.batchUpscaleFactor = 2;
+          appState.batchCropRatio = 1;
+          appState.previewCropItemId = null;
+
+          const rotBadge = document.getElementById('rotate-angle-badge');
+          if (rotBadge) rotBadge.textContent = '0°';
+          if (typeof selectUpscaleFactor === 'function') selectUpscaleFactor(2);
+
+          const cropRatioSel = document.getElementById('crop-ratio');
+          if (cropRatioSel) cropRatioSel.value = '1';
+          const cropCustomBox = document.getElementById('crop-custom-box');
+          if (cropCustomBox) cropCustomBox.classList.add('hide');
+          const batchCropBox = document.getElementById('batch-crop-preview-box');
+          if (batchCropBox) batchCropBox.classList.add('hide');
+
+          document.getElementById('single-canvas-wrapper').classList.add('hide');
           document.getElementById('cropper-container').classList.add('hide');
+          document.getElementById('batch-list-view').classList.add('hide');
           document.getElementById('preview-placeholder').classList.remove('hide');
           document.getElementById('settings-panel').classList.add('opacity-50', 'pointer-events-none');
           document.getElementById('btn-download').disabled = true;
+          document.getElementById('btn-clear-batch').classList.add('hide');
+          document.getElementById('batch-progress-container').classList.add('hide');
           document.getElementById('file-input').value = '';
+          
           if(appState.cropperInstance) { 
             appState.cropperInstance.destroy(); 
             appState.cropperInstance = null; 
           }
+          if(appState.batchCropperInstance) {
+            appState.batchCropperInstance.destroy();
+            appState.batchCropperInstance = null;
+          }
         }
+
+        window.clearBatchFiles = function() {
+          if (appState.isProcessingBatch) return;
+          resetWorkspace();
+          updateWorkspaceModeUI();
+        };
 
         function setLoading(isLoading, textKey = "loading") {
           const uploadContent = document.getElementById('upload-content');
@@ -559,7 +873,7 @@
           ctx.drawImage(img, 0, 0, width, height);
         }
 
-        function setupToolUI() {
+        function setupSingleToolUI() {
           if (!appState.originalImage) return;
           if (appState.cropperInstance) {
             appState.cropperInstance.destroy();
@@ -567,7 +881,7 @@
           }
 
           if (appState.activeTool.id === 'crop') {
-            canvas.classList.add('hide');
+            document.getElementById('single-canvas-wrapper').classList.add('hide');
             const cropContainer = document.getElementById('cropper-container');
             const cropImg = document.getElementById('crop-image');
             
@@ -581,7 +895,7 @@
             });
           } else {
             document.getElementById('cropper-container').classList.add('hide');
-            canvas.classList.remove('hide');
+            document.getElementById('single-canvas-wrapper').classList.remove('hide');
             initCanvas(appState.originalImage);
 
             if (appState.activeTool.id === 'resize') {
@@ -591,21 +905,220 @@
           }
         }
 
+        // --- 批量檔案新增與渲染邏輯 ---
+        function addFilesToBatch(fileList) {
+          const files = Array.from(fileList);
+          if (!files.length) return;
+
+          const remainingSlots = MAX_BATCH_FILES - appState.batchFiles.length;
+          if (remainingSlots <= 0) {
+            showToast(t('msg_limit_100'), 'warning');
+            return;
+          }
+
+          let filesToAdd = files;
+          if (files.length > remainingSlots) {
+            filesToAdd = files.slice(0, remainingSlots);
+            showToast(t('msg_limit_100'), 'warning');
+          }
+
+          filesToAdd.forEach((file, idx) => {
+            const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+            const thumbUrl = isHeic ? '' : URL.createObjectURL(file);
+            appState.batchFiles.push({
+              id: Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 5),
+              file: file,
+              name: file.name,
+              originalSize: file.size,
+              newSize: null,
+              dimensionsText: '',
+              status: 'ready', // ready, processing, done, error
+              thumbUrl: thumbUrl,
+              isHeic: isHeic,
+              resultBlob: null,
+              outName: ''
+            });
+          });
+
+          renderBatchList();
+          document.getElementById('preview-placeholder').classList.add('hide');
+          document.getElementById('batch-list-view').classList.remove('hide');
+          document.getElementById('settings-panel').classList.remove('opacity-50', 'pointer-events-none');
+          document.getElementById('btn-download').disabled = false;
+          document.getElementById('btn-clear-batch').classList.remove('hide');
+          updateWorkspaceModeUI();
+
+          if (appState.activeTool && appState.activeTool.id === 'crop') {
+            const firstDisplayable = appState.batchFiles.find(item => item.thumbUrl);
+            if (firstDisplayable && !appState.previewCropItemId) {
+              previewBatchCropItem(firstDisplayable.id);
+            }
+          }
+        }
+
+        // --- 批量裁切預覽與比例同步 ---
+        window.previewBatchCropItem = function(id) {
+          const item = appState.batchFiles.find(i => i.id === id);
+          if (!item || !item.thumbUrl) return;
+          appState.previewCropItemId = id;
+
+          const previewBox = document.getElementById('batch-crop-preview-box');
+          const previewImg = document.getElementById('batch-crop-image');
+          const fileNameEl = document.getElementById('crop-preview-filename');
+          previewBox.classList.remove('hide');
+          fileNameEl.textContent = item.name;
+
+          if (appState.batchCropperInstance) {
+            appState.batchCropperInstance.destroy();
+            appState.batchCropperInstance = null;
+          }
+
+          previewImg.src = item.thumbUrl;
+          const ratioVal = document.getElementById('crop-ratio').value;
+          const aspect = ratioVal === 'custom' ? NaN : parseFloat(ratioVal);
+
+          appState.batchCropperInstance = new Cropper(previewImg, {
+            viewMode: 1,
+            background: false,
+            autoCropArea: 0.85,
+            aspectRatio: aspect,
+            cropend() {
+              if (document.getElementById('crop-ratio').value === 'custom' && appState.batchCropperInstance) {
+                const data = appState.batchCropperInstance.getData(true);
+                if (data.width > 0 && data.height > 0) {
+                  document.getElementById('crop-custom-w').value = data.width;
+                  document.getElementById('crop-custom-h').value = data.height;
+                  appState.batchCropRatio = data.width / data.height;
+                }
+              }
+            }
+          });
+          renderBatchList();
+        };
+
+        window.removeBatchItem = function(id) {
+          if (appState.isProcessingBatch) return;
+          const idx = appState.batchFiles.findIndex(item => item.id === id);
+          if (idx > -1) {
+            if (appState.batchFiles[idx].thumbUrl) URL.revokeObjectURL(appState.batchFiles[idx].thumbUrl);
+            appState.batchFiles.splice(idx, 1);
+          }
+          if (appState.batchFiles.length === 0) {
+            clearBatchFiles();
+          } else {
+            if (appState.previewCropItemId === id) {
+              appState.previewCropItemId = null;
+              const nextItem = appState.batchFiles.find(item => item.thumbUrl);
+              if (nextItem && appState.activeTool.id === 'crop') previewBatchCropItem(nextItem.id);
+            }
+            renderBatchList();
+            updateWorkspaceModeUI();
+          }
+        };
+
+        window.downloadSingleBatchItem = function(id) {
+          const item = appState.batchFiles.find(i => i.id === id);
+          if (!item || !item.resultBlob) return;
+          const url = URL.createObjectURL(item.resultBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = item.outName;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        };
+
+        function renderBatchList() {
+          const container = document.getElementById('batch-items-container');
+          const badge = document.getElementById('batch-count-badge');
+          badge.textContent = `${appState.batchFiles.length} / ${MAX_BATCH_FILES}`;
+          
+          container.innerHTML = appState.batchFiles.map((item, index) => {
+            const thumbHtml = item.thumbUrl 
+              ? `<img src="${item.thumbUrl}" class="w-10 h-10 rounded-lg object-cover bg-slate-800 shrink-0 border border-slate-600" alt="">`
+              : `<div class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-[10px] font-bold text-amber-400 shrink-0 border border-slate-600">HEIC</div>`;
+
+            let statusBadge = '';
+            let sizeInfo = `<span>${formatBytes(item.originalSize)}</span>`;
+            let actionBtn = '';
+
+            if (item.status === 'ready') {
+              statusBadge = `<span class="px-2 py-0.5 bg-slate-700 text-slate-300 text-[11px] rounded-md">${t('status_ready')}</span>`;
+            } else if (item.status === 'processing') {
+              statusBadge = `<span class="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[11px] rounded-md animate-pulse">${t('status_processing')}</span>`;
+            } else if (item.status === 'done') {
+              statusBadge = `<span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[11px] font-semibold rounded-md">${t('status_done')}</span>`;
+              const diffPercent = Math.round(((item.newSize - item.originalSize) / item.originalSize) * 100);
+              const diffColor = diffPercent <= 0 ? 'text-emerald-400' : 'text-amber-400';
+              const sign = diffPercent > 0 ? '+' : '';
+              const dimBadge = item.dimensionsText ? `<span class="ml-2 px-1.5 py-0.2 bg-slate-700 text-slate-300 rounded text-[10px]">${item.dimensionsText}</span>` : '';
+              sizeInfo = `
+                <span class="line-through text-slate-500">${formatBytes(item.originalSize)}</span>
+                <span class="mx-1">→</span>
+                <span class="text-white font-semibold">${formatBytes(item.newSize)}</span>
+                <span class="ml-1 ${diffColor} font-bold">(${sign}${diffPercent}%)</span>
+                ${dimBadge}
+              `;
+              actionBtn = `
+                <button onclick="downloadSingleBatchItem('${item.id}')" title="下載此張" class="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                </button>
+              `;
+            } else if (item.status === 'error') {
+              statusBadge = `<span class="px-2 py-0.5 bg-rose-500/20 text-rose-400 text-[11px] rounded-md">${t('status_error')}</span>`;
+            }
+
+            const isCropTool = appState.activeTool && appState.activeTool.id === 'crop';
+            const isPreviewing = isCropTool && appState.previewCropItemId === item.id;
+            const previewBtn = (isCropTool && item.thumbUrl)
+              ? `<button onclick="previewBatchCropItem('${item.id}')" title="在上方框中預覽比例" class="px-2 py-1 text-[11px] font-semibold rounded-lg transition ${isPreviewing ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}">預覽</button>`
+              : '';
+
+            return `
+              <div class="flex items-center justify-between bg-slate-800/90 hover:bg-slate-800 border ${isPreviewing ? 'border-blue-500/70' : 'border-slate-700/70'} rounded-xl p-2.5 transition">
+                <div class="flex items-center space-x-3 min-w-0 flex-grow">
+                  <span class="text-xs text-slate-500 font-mono w-6 text-right shrink-0">${index + 1}.</span>
+                  ${thumbHtml}
+                  <div class="min-w-0 flex-grow">
+                    <p class="text-sm font-medium text-slate-100 truncate" title="${item.name}">${item.name}</p>
+                    <div class="text-xs text-slate-400 flex items-center mt-0.5">${sizeInfo}</div>
+                  </div>
+                </div>
+                <div class="flex items-center space-x-2 ml-2 shrink-0">
+                  ${previewBtn}
+                  ${statusBadge}
+                  ${actionBtn}
+                  <button onclick="removeBatchItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-700 rounded-lg transition" ${appState.isProcessingBatch ? 'disabled' : ''}>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+
         // 初始化翻譯與網格
         applyTranslations();
 
-        // 檔案上傳
+        // 檔案上傳監聽 (支援批量與單張)
         const fileInput = document.getElementById('file-input');
         if (fileInput) {
           fileInput.addEventListener('change', async (e) => {
+            if (!e.target.files || e.target.files.length === 0) return;
+
+            if (BATCH_TOOLS.includes(appState.activeTool.id)) {
+              addFilesToBatch(e.target.files);
+              fileInput.value = ''; // 允許重複選取相同檔案
+              return;
+            }
+
+            // 單張編輯工具模式
             const file = e.target.files[0];
-            if (!file) return;
             setLoading(true, "msg_reading");
 
             try {
               let imageBlob = file;
               const fileName = file.name.toLowerCase();
-              if (file.type === 'image/heic' || file.type === 'image/heif' || fileName.endsWith('.heic')) {
+              if (file.type === 'image/heic' || file.type === 'image/heif' || fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
                 if (typeof heic2any !== 'undefined') {
                   const convertedBlob = await heic2any({ blob: file, toType: "image/png" });
                   imageBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
@@ -618,7 +1131,7 @@
                   appState.originalImage = img;
                   document.getElementById('preview-placeholder').classList.add('hide');
                   document.getElementById('btn-download').disabled = false;
-                  setupToolUI();
+                  setupSingleToolUI();
                   setLoading(false);
                 };
                 img.src = event.target.result;
@@ -626,8 +1139,19 @@
               reader.readAsDataURL(imageBlob);
             } catch (error) {
               console.error("Error:", error);
-              alert(t('msg_reading') + ' ' + error.message);
+              showToast(t('msg_reading') + ' ' + error.message, 'error');
               setLoading(false);
+            }
+          });
+        }
+
+        // 批量佇列右上角「繼續新增圖片」按鈕
+        const batchAddInput = document.getElementById('batch-add-input');
+        if (batchAddInput) {
+          batchAddInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+              addFilesToBatch(e.target.files);
+              batchAddInput.value = '';
             }
           });
         }
@@ -635,15 +1159,55 @@
         document.getElementById('btn-go-home').addEventListener('click', goHome);
         document.getElementById('btn-back-home').addEventListener('click', goHome);
 
-        // 壓縮
+        // 壓縮與轉換滑桿顯示更新
         document.getElementById('compress-slider').addEventListener('input', (e) => {
           document.getElementById('compress-val').textContent = Math.round(e.target.value * 100) + '%';
         });
+        document.getElementById('convert-quality-slider').addEventListener('input', (e) => {
+          document.getElementById('convert-quality-val').textContent = Math.round(e.target.value * 100) + '%';
+        });
+        document.getElementById('resize-pct-slider').addEventListener('input', (e) => {
+          document.getElementById('resize-pct-val').textContent = e.target.value + '%';
+        });
 
-        // 裁切
+        // 調整大小模式切換
+        window.toggleResizeMode = function(mode) {
+          if (mode === 'percent') {
+            document.getElementById('resize-px-box').classList.add('hide');
+            document.getElementById('resize-pct-box').classList.remove('hide');
+          } else {
+        // 裁切 (支援單圖與 100 張批量比例同步)
         window.changeCropRatio = function(val) {
+          const customBox = document.getElementById('crop-custom-box');
+          if (val === 'custom') {
+            if (customBox) customBox.classList.remove('hide');
+            const cw = parseFloat(document.getElementById('crop-custom-w').value) || 16;
+            const ch = parseFloat(document.getElementById('crop-custom-h').value) || 9;
+            appState.batchCropRatio = cw / ch;
+            if (appState.batchCropperInstance) {
+              appState.batchCropperInstance.setAspectRatio(NaN);
+            }
+          } else {
+            if (customBox) customBox.classList.add('hide');
+            const parsed = parseFloat(val);
+            appState.batchCropRatio = parsed;
+            if (appState.batchCropperInstance) {
+              appState.batchCropperInstance.setAspectRatio(parsed);
+            }
+          }
           if (appState.cropperInstance) {
-            appState.cropperInstance.setAspectRatio(val === 'free' ? NaN : parseFloat(val));
+            appState.cropperInstance.setAspectRatio(val === 'custom' ? NaN : parseFloat(val));
+          }
+        };
+
+        window.updateCustomCropRatio = function() {
+          const cw = parseFloat(document.getElementById('crop-custom-w').value);
+          const ch = parseFloat(document.getElementById('crop-custom-h').value);
+          if (cw > 0 && ch > 0) {
+            appState.batchCropRatio = cw / ch;
+            if (appState.batchCropperInstance) {
+              appState.batchCropperInstance.setAspectRatio(appState.batchCropRatio);
+            }
           }
         };
         
@@ -653,112 +1217,14 @@
           const newImg = new Image();
           newImg.onload = () => {
             appState.originalImage = newImg;
-            alert(t('msg_crop_success'));
+            showToast(t('msg_crop_success'), 'success');
           };
           newImg.src = croppedCanvas.toDataURL('image/png');
         };
 
-        // 縮放
-        const resizeW = document.getElementById('resize-w');
-        const resizeH = document.getElementById('resize-h');
-        const aspectBox = document.getElementById('resize-aspect');
-        
-        if (resizeW && resizeH && aspectBox) {
-          resizeW.addEventListener('input', (e) => {
-            if(!appState.originalImage || !aspectBox.checked) return;
-            const ratio = appState.originalImage.height / appState.originalImage.width;
-            resizeH.value = Math.round(e.target.value * ratio);
-          });
-          resizeH.addEventListener('input', (e) => {
-            if(!appState.originalImage || !aspectBox.checked) return;
-            const ratio = appState.originalImage.width / appState.originalImage.height;
-            resizeW.value = Math.round(e.target.value * ratio);
-          });
-        }
-
-        window.applyResize = function() {
-          if(!appState.originalImage) return alert(t('msg_need_upload'));
-          const w = parseInt(resizeW.value);
-          const h = parseInt(resizeH.value);
-          if(w > 0 && h > 0) {
-            initCanvas(appState.originalImage, w, h);
-            const newImg = new Image();
-            newImg.onload = () => {
-              appState.originalImage = newImg;
-              alert(t('msg_resize_success'));
-            };
-            newImg.src = canvas.toDataURL('image/png');
-          } else {
-            alert(t('msg_resize_err'));
-          }
-        };
-
-        // 旋轉
-        window.applyRotate = function(deg) {
-          if(!appState.originalImage) return;
-          const rad = deg * Math.PI / 180;
-          const sin = Math.abs(Math.sin(rad)), cos = Math.abs(Math.cos(rad));
-          const newWidth = appState.originalImage.width * cos + appState.originalImage.height * sin;
-          const newHeight = appState.originalImage.width * sin + appState.originalImage.height * cos;
-
-          canvas.width = newWidth;
-          canvas.height = newHeight;
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.translate(canvas.width / 2, canvas.height / 2);
-          ctx.rotate(rad);
-          ctx.drawImage(appState.originalImage, -appState.originalImage.width / 2, -appState.originalImage.height / 2);
-          
-          const newImg = new Image();
-          newImg.onload = () => { appState.originalImage = newImg; };
-          newImg.src = canvas.toDataURL('image/png');
-        };
-
-        // 浮水印
-        window.applyWatermark = function() {
-          if(!appState.originalImage) return;
-          initCanvas(appState.originalImage); 
-          const text = document.getElementById('wm-text').value;
-          const color = document.getElementById('wm-color').value;
-          const alpha = document.getElementById('wm-alpha').value;
-          
-          const r = parseInt(color.slice(1,3), 16), g = parseInt(color.slice(3,5), 16), b = parseInt(color.slice(5,7), 16);
-          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-          const fontSize = Math.max(20, canvas.width * 0.05); 
-          ctx.font = `bold ${fontSize}px sans-serif`;
-          ctx.textAlign = 'right';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(text, canvas.width - 20, canvas.height - 20);
-
-          const newImg = new Image();
-          newImg.onload = () => { 
-            appState.originalImage = newImg;
-            alert(t('msg_wm_success'));
-          };
-          newImg.src = canvas.toDataURL('image/png');
-        };
-
-        // 提升解析度
-        window.applyUpscale = function(scale) {
-          if(!appState.originalImage) return;
-          const newWidth = appState.originalImage.width * scale;
-          const newHeight = appState.originalImage.height * scale;
-
-          canvas.width = newWidth;
-          canvas.height = newHeight;
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(appState.originalImage, 0, 0, newWidth, newHeight);
-          
-          const newImg = new Image();
-          newImg.onload = () => { appState.originalImage = newImg; };
-          newImg.src = canvas.toDataURL('image/png');
-          alert(`${t('msg_up_success')} : ${newWidth} x ${newHeight} (${scale}x)`);
-        };
-
         // 去背
         window.applyColorRemoval = function() {
-          if(!appState.originalImage) return alert(t('msg_need_upload'));
+          if(!appState.originalImage) return showToast(t('msg_need_upload'), 'warning');
           setLoading(true, "msg_processing");
           
           initCanvas(appState.originalImage);
@@ -787,14 +1253,339 @@
             newImg.onload = () => {
               appState.originalImage = newImg;
               setLoading(false);
-              alert(t('msg_rmbg_success'));
+              showToast(t('msg_rmbg_success'), 'success');
             };
             newImg.src = canvas.toDataURL('image/png');
           }, 100);
         };
 
-        // 下載
-        window.downloadImage = function() {
+        // --- 取得保留原圖格式的 MIME 與副檔名 ---
+        function getPreservedFormat(file) {
+          const lower = file.name.toLowerCase();
+          if (file.type === 'image/png' || lower.endsWith('.png')) return { mime: 'image/png', ext: 'png', quality: 1.0 };
+          if (file.type === 'image/webp' || lower.endsWith('.webp')) return { mime: 'image/webp', ext: 'webp', quality: 0.92 };
+          return { mime: 'image/jpeg', ext: 'jpg', quality: 0.92 };
+        }
+
+        // --- 單張非同步批量處理核心函式 (支援轉換/壓縮/縮放/放大/旋轉/浮水印) ---
+        async function processSingleFileForBatch(file, toolId, options) {
+          let imageBlob = file;
+          const lowerName = file.name.toLowerCase();
+          if (file.type === 'image/heic' || file.type === 'image/heif' || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
+            if (typeof heic2any !== 'undefined') {
+              const converted = await heic2any({ blob: file, toType: "image/png" });
+              imageBlob = Array.isArray(converted) ? converted[0] : converted;
+            }
+          }
+
+          const objectUrl = URL.createObjectURL(imageBlob);
+          try {
+            const img = await new Promise((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => resolve(image);
+              image.onerror = () => reject(new Error('Image load failed'));
+              image.src = objectUrl;
+            });
+
+            const offCanvas = document.createElement('canvas');
+            const offCtx = offCanvas.getContext('2d');
+            let targetMime = options.targetMime;
+            let quality = options.quality;
+            let ext = options.ext;
+
+            // 若非格式轉換或壓縮工具，自動保留原圖格式避免容量暴增
+            if (toolId !== 'convert' && toolId !== 'compress') {
+              const preserved = getPreservedFormat(file);
+              targetMime = preserved.mime;
+              quality = preserved.quality;
+              ext = preserved.ext;
+            }
+
+            let outW = img.width;
+            let outH = img.height;
+
+            if (toolId === 'crop') {
+              const targetRatio = options.cropRatio > 0 ? options.cropRatio : 1;
+              const imgRatio = img.width / img.height;
+              let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
+
+              if (imgRatio > targetRatio) {
+                // 原圖較寬，裁切左右兩側
+                sWidth = Math.max(1, Math.round(img.height * targetRatio));
+                if (options.cropAnchor === 'top') sx = 0;
+                else if (options.cropAnchor === 'bottom') sx = img.width - sWidth;
+                else sx = Math.round((img.width - sWidth) / 2);
+              } else if (imgRatio < targetRatio) {
+                // 原圖較高，裁切上下兩端
+                sHeight = Math.max(1, Math.round(img.width / targetRatio));
+                if (options.cropAnchor === 'top') sy = 0;
+                else if (options.cropAnchor === 'bottom') sy = img.height - sHeight;
+                else sy = Math.round((img.height - sHeight) / 2);
+              }
+
+              outW = sWidth;
+              outH = sHeight;
+              offCanvas.width = outW;
+              offCanvas.height = outH;
+              if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
+                offCtx.fillStyle = '#ffffff';
+                offCtx.fillRect(0, 0, outW, outH);
+              }
+              offCtx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, outW, outH);
+            }
+            else if (toolId === 'resize') {
+              if (options.resizeMode === 'percent') {
+                const scale = options.resizePct / 100;
+                outW = Math.max(1, Math.round(img.width * scale));
+                outH = Math.max(1, Math.round(img.height * scale));
+              } else {
+                outW = Math.max(1, options.resizeW);
+                if (options.resizeAspect) {
+                  const ratio = img.height / img.width;
+                  outH = Math.max(1, Math.round(outW * ratio));
+                } else {
+                  outH = Math.max(1, options.resizeH);
+                }
+              }
+              offCanvas.width = outW;
+              offCanvas.height = outH;
+              if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
+                offCtx.fillStyle = '#ffffff';
+                offCtx.fillRect(0, 0, outW, outH);
+              }
+              offCtx.imageSmoothingEnabled = true;
+              offCtx.imageSmoothingQuality = 'high';
+              offCtx.drawImage(img, 0, 0, outW, outH);
+            } 
+            else if (toolId === 'upscale') {
+              outW = Math.round(img.width * options.upscaleFactor);
+              outH = Math.round(img.height * options.upscaleFactor);
+              offCanvas.width = outW;
+              offCanvas.height = outH;
+              if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
+                offCtx.fillStyle = '#ffffff';
+                offCtx.fillRect(0, 0, outW, outH);
+              }
+              offCtx.imageSmoothingEnabled = true;
+              offCtx.imageSmoothingQuality = 'high';
+              offCtx.drawImage(img, 0, 0, outW, outH);
+            } 
+            else if (toolId === 'rotate') {
+              const rad = (options.rotateDeg * Math.PI) / 180;
+              const sin = Math.abs(Math.sin(rad));
+              const cos = Math.abs(Math.cos(rad));
+              outW = Math.round(img.width * cos + img.height * sin);
+              outH = Math.round(img.width * sin + img.height * cos);
+              offCanvas.width = outW;
+              offCanvas.height = outH;
+              if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
+                offCtx.fillStyle = '#ffffff';
+                offCtx.fillRect(0, 0, outW, outH);
+              }
+              offCtx.translate(outW / 2, outH / 2);
+              offCtx.rotate(rad);
+              offCtx.drawImage(img, -img.width / 2, -img.height / 2);
+            } 
+            else if (toolId === 'watermark') {
+              offCanvas.width = outW;
+              offCanvas.height = outH;
+              if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
+                offCtx.fillStyle = '#ffffff';
+                offCtx.fillRect(0, 0, outW, outH);
+              }
+              offCtx.drawImage(img, 0, 0, outW, outH);
+
+              if (options.wmText.trim()) {
+                const hex = options.wmColor;
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                offCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${options.wmAlpha})`;
+                const fontSize = Math.max(20, Math.round(outW * 0.045));
+                const padding = Math.max(16, Math.round(outW * 0.025));
+                offCtx.font = `bold ${fontSize}px sans-serif`;
+
+                let x = outW - padding;
+                let y = outH - padding;
+                offCtx.textAlign = 'right';
+                offCtx.textBaseline = 'bottom';
+
+                if (options.wmPos === 'bottom-left') {
+                  x = padding; y = outH - padding;
+                  offCtx.textAlign = 'left'; offCtx.textBaseline = 'bottom';
+                } else if (options.wmPos === 'top-right') {
+                  x = outW - padding; y = padding;
+                  offCtx.textAlign = 'right'; offCtx.textBaseline = 'top';
+                } else if (options.wmPos === 'top-left') {
+                  x = padding; y = padding;
+                  offCtx.textAlign = 'left'; offCtx.textBaseline = 'top';
+                } else if (options.wmPos === 'center') {
+                  x = outW / 2; y = outH / 2;
+                  offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
+                }
+                offCtx.fillText(options.wmText, x, y);
+              }
+            } 
+            else {
+              // convert / compress
+              offCanvas.width = outW;
+              offCanvas.height = outH;
+              if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
+                offCtx.fillStyle = '#ffffff';
+                offCtx.fillRect(0, 0, outW, outH);
+              }
+              offCtx.drawImage(img, 0, 0, outW, outH);
+            }
+
+            const blob = await new Promise((resolve) => {
+              offCanvas.toBlob((b) => resolve(b), targetMime, quality);
+            });
+
+            // 清理離屏畫布釋放記憶體
+            offCanvas.width = 0;
+            offCanvas.height = 0;
+
+            return { blob, ext, dimensionsText: `${outW}×${outH}` };
+          } finally {
+            URL.revokeObjectURL(objectUrl);
+          }
+        }
+
+        // --- 批量執行與逐張下載 ---
+        async function processAndDownloadBatch() {
+          if (appState.batchFiles.length === 0 || appState.isProcessingBatch) return;
+
+          const toolId = appState.activeTool.id;
+          const resizeMode = document.getElementById('resize-mode').value;
+          const resizeW = parseInt(document.getElementById('resize-w').value);
+          const resizeH = parseInt(document.getElementById('resize-h').value);
+          if (toolId === 'resize' && resizeMode === 'pixels' && (!(resizeW > 0) || !(resizeH > 0))) {
+            showToast(t('msg_resize_err'), 'error');
+            return;
+          }
+
+          appState.isProcessingBatch = true;
+          const btnDownload = document.getElementById('btn-download');
+          const btnClear = document.getElementById('btn-clear-batch');
+          const progressContainer = document.getElementById('batch-progress-container');
+          const progressBar = document.getElementById('batch-progress-bar');
+          const progressLabel = document.getElementById('batch-progress-label');
+          const progressPercent = document.getElementById('batch-progress-percent');
+
+          btnDownload.disabled = true;
+          btnClear.disabled = true;
+          document.getElementById('settings-panel').classList.add('opacity-50', 'pointer-events-none');
+          progressContainer.classList.remove('hide');
+
+          // 彙整工具設定參數
+          const options = {
+            targetMime: 'image/jpeg',
+            quality: 0.85,
+            ext: 'jpg',
+            cropRatio: appState.batchCropRatio,
+            cropAnchor: document.getElementById('crop-anchor').value,
+            resizeMode: resizeMode,
+            resizeW: resizeW,
+            resizeH: resizeH,
+            resizeAspect: document.getElementById('resize-aspect').checked,
+            resizePct: parseInt(document.getElementById('resize-pct-slider').value),
+            upscaleFactor: appState.batchUpscaleFactor,
+            rotateDeg: appState.batchRotateDeg,
+            wmText: document.getElementById('wm-text').value,
+            wmColor: document.getElementById('wm-color').value,
+            wmAlpha: parseFloat(document.getElementById('wm-alpha').value),
+            wmPos: document.getElementById('wm-position').value
+          };
+
+          if (toolId === 'convert') {
+            options.targetMime = document.getElementById('format-select').value;
+            options.quality = parseFloat(document.getElementById('convert-quality-slider').value);
+          } else if (toolId === 'compress') {
+            options.targetMime = document.getElementById('compress-format').value;
+            options.quality = parseFloat(document.getElementById('compress-slider').value);
+          }
+
+          if (options.targetMime === 'image/png') options.ext = 'png';
+          else if (options.targetMime === 'image/webp') options.ext = 'webp';
+          else if (options.targetMime === 'image/bmp') options.ext = 'bmp';
+          else options.ext = 'jpg';
+
+          const total = appState.batchFiles.length;
+          const usedNames = new Set();
+
+          for (let i = 0; i < total; i++) {
+            const item = appState.batchFiles[i];
+            item.status = 'processing';
+            renderBatchList();
+
+            const pct = Math.round((i / total) * 100);
+            progressBar.style.width = `${pct}%`;
+            progressLabel.textContent = `${t('status_processing')} (${i + 1}/${total})`;
+            progressPercent.textContent = `${pct}%`;
+
+            // 讓出主執行緒一點時間更新 UI，避免處理 100 張時畫面卡死
+            await new Promise(r => setTimeout(r, 15));
+
+            try {
+              const res = await processSingleFileForBatch(item.file, toolId, options);
+              
+              // 處理檔名重複問題
+              const baseName = item.name.replace(/\.[^/.]+$/, "");
+              let finalName = `${baseName}.${res.ext}`;
+              let counter = 1;
+              while (usedNames.has(finalName)) {
+                finalName = `${baseName}_${counter}.${res.ext}`;
+                counter++;
+              }
+              usedNames.add(finalName);
+
+              item.resultBlob = res.blob;
+              item.newSize = res.blob.size;
+              item.dimensionsText = res.dimensionsText;
+              item.outName = finalName;
+              item.status = 'done';
+            } catch (err) {
+              console.error(`Failed processing ${item.name}:`, err);
+              item.status = 'error';
+            }
+          }
+
+          progressBar.style.width = '100%';
+          progressPercent.textContent = '100%';
+          renderBatchList();
+
+          // 直接逐張下載所有完成處理的圖片（不使用 ZIP）
+          const completedItems = appState.batchFiles.filter(item => item.status === 'done' && item.resultBlob);
+          
+          if (completedItems.length > 0) {
+            progressLabel.textContent = t('msg_downloading_files');
+            for (let i = 0; i < completedItems.length; i++) {
+              downloadSingleBatchItem(completedItems[i].id);
+              // 間隔短暫時間觸發瀏覽器下載，避免瀏覽器同時攔截過多下載請求
+              if (completedItems.length > 1) {
+                await new Promise(r => setTimeout(r, 150));
+              }
+            }
+            if (completedItems.length > 1) {
+              showToast(t('msg_batch_done'), 'success');
+            }
+          }
+
+          appState.isProcessingBatch = false;
+          btnDownload.disabled = false;
+          btnClear.disabled = false;
+          document.getElementById('settings-panel').classList.remove('opacity-50', 'pointer-events-none');
+          setTimeout(() => progressContainer.classList.add('hide'), 2000);
+        }
+
+        // --- 統一處理下載按鈕點擊 ---
+        window.handleDownloadAction = function() {
+          if (BATCH_TOOLS.includes(appState.activeTool.id)) {
+            processAndDownloadBatch();
+            return;
+          }
+
+          // 單圖模式下載
           if(!appState.originalImage) return;
 
           let exportCanvas = canvas;
@@ -806,22 +1597,10 @@
           let quality = 1.0;
           let ext = 'png';
 
-          if(appState.activeTool.id === 'convert') {
-            format = document.getElementById('format-select').value;
-            if(format === 'image/jpeg') ext = 'jpg';
-            else if(format === 'image/webp') ext = 'webp';
-            else if(format === 'image/bmp') ext = 'bmp';
-          } 
-          else if (appState.activeTool.id === 'compress') {
-            format = 'image/jpeg';
-            ext = 'jpg';
-            quality = parseFloat(document.getElementById('compress-slider').value);
-          }
-          else if (appState.activeTool.id === 'removebg') {
+          if (appState.activeTool.id === 'removebg') {
             format = 'image/png';
             ext = 'png';
-          }
-          else {
+          } else {
             const file = document.getElementById('file-input').files[0];
             if(file && (file.type === 'image/jpeg' || file.name.toLowerCase().endsWith('.jpg'))) {
               format = 'image/jpeg';
