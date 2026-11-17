@@ -1176,6 +1176,32 @@
             document.getElementById('resize-px-box').classList.add('hide');
             document.getElementById('resize-pct-box').classList.remove('hide');
           } else {
+            document.getElementById('resize-pct-box').classList.add('hide');
+            document.getElementById('resize-px-box').classList.remove('hide');
+          }
+        };
+
+        // 批量旋轉角度設定
+        window.setBatchRotate = function(deg) {
+          appState.batchRotateDeg = (appState.batchRotateDeg + deg) % 360;
+          const rotBadge = document.getElementById('rotate-angle-badge');
+          if (rotBadge) rotBadge.textContent = `${appState.batchRotateDeg}°`;
+        };
+
+        // 批量放大倍率設定
+        window.selectUpscaleFactor = function(factor) {
+          appState.batchUpscaleFactor = factor;
+          const badge = document.getElementById('upscale-badge');
+          if (badge) badge.textContent = `${factor}x`;
+          document.querySelectorAll('.upscale-opt').forEach(btn => {
+            btn.className = 'upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition';
+          });
+          const activeBtn = document.getElementById(`btn-upscale-${factor}`);
+          if (activeBtn) {
+            activeBtn.className = 'upscale-opt py-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-700 rounded-xl text-sm font-bold transition';
+          }
+        };
+
         // 裁切 (支援單圖與 100 張批量比例同步)
         window.changeCropRatio = function(val) {
           const customBox = document.getElementById('crop-custom-box');
