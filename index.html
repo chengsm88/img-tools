@@ -15,6 +15,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
+  <!-- JSZip (支援批量打包 ZIP 下載) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -339,8 +342,23 @@
           </div>
         </div>
 
+        <!-- 批量下載方式選擇 (僅批量工具顯示) -->
+        <div id="batch-download-mode-box" class="hide mt-5 pt-4 border-t border-slate-200 space-y-2">
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider" data-i18n="download_mode_label">下載方式</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button type="button" id="btn-dl-mode-direct" onclick="setDownloadMode('direct')" class="py-2 px-2.5 rounded-xl text-xs font-bold border-2 border-blue-600 bg-blue-50 text-blue-700 transition flex items-center justify-center space-x-1">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              <span data-i18n="download_mode_direct">直接逐張下載</span>
+            </button>
+            <button type="button" id="btn-dl-mode-zip" onclick="setDownloadMode('zip')" class="py-2 px-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition flex items-center justify-center space-x-1">
+              <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+              <span data-i18n="download_mode_zip">打包 ZIP 下載</span>
+            </button>
+          </div>
+        </div>
+
         <!-- 操作按鈕區 -->
-        <div class="mt-6 pt-4 border-t border-slate-200 space-y-2">
+        <div class="mt-4 pt-3 border-t border-slate-200 space-y-2">
           <button id="btn-download" onclick="handleDownloadAction()" disabled class="w-full py-3.5 px-4 bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             <span id="btn-download-text" data-i18n="download_btn">處理並下載</span>
@@ -449,8 +467,12 @@
         rotate_label: '旋轉角度設定', rotate_left: '左旋 90°', rotate_right: '右旋 90°', rotate_hint: '可連續點擊調整角度，系統將套用至佇列中的所有圖片。',
         wm_label: '文字浮水印', wm_color: '顏色', wm_opacity: '透明度', wm_pos: '浮水印位置',
         wm_pos_br: '右下角', wm_pos_bl: '左下角', wm_pos_tr: '右上角', wm_pos_tl: '左上角', wm_pos_center: '正中央',
+        download_mode_label: '下載方式',
+        download_mode_direct: '直接逐張下載',
+        download_mode_zip: '打包 ZIP 下載',
         download_btn: '處理並下載',
         download_batch_btn: '批量處理並逐張下載',
+        download_batch_zip_btn: '批量處理並打包 ZIP 下載',
         download_single_batch_btn: '處理並下載圖片',
         clear_all: '清空所有圖片',
         preview_empty: '尚未載入圖片，請從左側上傳',
@@ -465,7 +487,7 @@
         
         // 工具名稱與描述
         t_convert_title: '格式轉換 (支援100張)', t_convert_desc: '批量轉換 HEIC, PNG, WEBP, SVG 等格式至 JPG / PNG / WEBP。',
-        t_compress_title: '壓縮圖片 (支援100張)', t_compress_desc: '批量降低檔案大小同時保持視覺品質，直接逐張下載。',
+        t_compress_title: '壓縮圖片 (支援100張)', t_compress_desc: '批量降低檔案大小同時保持視覺品質，支援直接或 ZIP 下載。',
         t_crop_title: '裁剪圖片 (支援100張)', t_crop_desc: '批量依指定長寬比或自訂比例裁切最多 100 張圖片。',
         t_resize_title: '調整大小 (支援100張)', t_resize_desc: '批量按自訂像素尺寸或百分比縮放圖片。',
         t_removebg_title: '刪除背景', t_removebg_desc: '運用色彩容差演算法去背，完全支援本機直接執行。',
@@ -481,6 +503,8 @@
         msg_reading: '讀取圖片中...', msg_processing: '像素分析去背中...',
         msg_limit_100: '⚠️ 最多支援 100 張圖片！已自動截取前 100 張。',
         msg_batch_done: '🎉 批量處理完成！已自動逐張下載所有圖片。',
+        msg_batch_zip_done: '🎉 批量處理完成！已打包為 ZIP 檔案下載。',
+        msg_packing_zip: '正在打包 ZIP 壓縮檔...',
         msg_downloading_files: '正在逐張下載圖片...'
       },
       'zh-CN': {
@@ -511,8 +535,12 @@
         rotate_label: '旋转角度设置', rotate_left: '左旋 90°', rotate_right: '右旋 90°', rotate_hint: '可连续点击调整角度，系统将应用至队列中的所有图片。',
         wm_label: '文字水印', wm_color: '颜色', wm_opacity: '透明度', wm_pos: '水印位置',
         wm_pos_br: '右下角', wm_pos_bl: '左下角', wm_pos_tr: '右上角', wm_pos_tl: '左上角', wm_pos_center: '正中央',
+        download_mode_label: '下载方式',
+        download_mode_direct: '直接逐张下载',
+        download_mode_zip: '打包 ZIP 下载',
         download_btn: '处理并下载',
         download_batch_btn: '批量处理并逐张下载',
+        download_batch_zip_btn: '批量处理并打包 ZIP 下载',
         download_single_batch_btn: '处理并下载图片',
         clear_all: '清空所有图片',
         preview_empty: '尚未加载图片，请从左侧上传',
@@ -526,7 +554,7 @@
         footer_text: 'ImgTools - 基于 HTML5 Canvas, Cropper.js 的纯本地端图片处理工具。无需服务器，无隐私风险。',
         
         t_convert_title: '格式转换 (支持100张)', t_convert_desc: '批量转换 HEIC, PNG, WEBP, SVG 等格式至 JPG / PNG / WEBP。',
-        t_compress_title: '压缩图片 (支持100张)', t_compress_desc: '批量降低文件大小同时保持视觉质量，直接逐张下载。',
+        t_compress_title: '压缩图片 (支持100张)', t_compress_desc: '批量降低文件大小同时保持视觉质量，支持直接或 ZIP 下载。',
         t_crop_title: '裁剪图片 (支持100张)', t_crop_desc: '批量依指定长宽比或自定义比例裁剪最多 100 张图片。',
         t_resize_title: '调整大小 (支持100张)', t_resize_desc: '批量按自定义像素尺寸或百分比缩放图片。',
         t_removebg_title: '删除背景', t_removebg_desc: '运用色彩容差算法抠图，完全支持本地直接运行。',
@@ -541,6 +569,8 @@
         msg_reading: '读取图片中...', msg_processing: '像素分析抠图中...',
         msg_limit_100: '⚠️ 最多支持 100 张图片！已自动截取前 100 张。',
         msg_batch_done: '🎉 批量处理完成！已自动逐张下载所有图片。',
+        msg_batch_zip_done: '🎉 批量处理完成！已打包为 ZIP 文件下载。',
+        msg_packing_zip: '正在打包 ZIP 压缩包...',
         msg_downloading_files: '正在逐张下载图片...'
       },
       'en': {
@@ -571,8 +601,12 @@
         rotate_label: 'Rotation Angle', rotate_left: 'Rotate Left 90°', rotate_right: 'Rotate Right 90°', rotate_hint: 'Click repeatedly to adjust angle; applies to all queued images.',
         wm_label: 'Text Watermark', wm_color: 'Color', wm_opacity: 'Opacity', wm_pos: 'Position',
         wm_pos_br: 'Bottom Right', wm_pos_bl: 'Bottom Left', wm_pos_tr: 'Top Right', wm_pos_tl: 'Top Left', wm_pos_center: 'Center',
+        download_mode_label: 'Download Method',
+        download_mode_direct: 'Direct Files',
+        download_mode_zip: 'ZIP Archive',
         download_btn: 'Process & Download',
-        download_batch_btn: 'Batch Process & Download All',
+        download_batch_btn: 'Batch Process & Download Files',
+        download_batch_zip_btn: 'Batch Process & Download ZIP',
         download_single_batch_btn: 'Process & Download Image',
         clear_all: 'Clear All Images',
         preview_empty: 'No image loaded, please upload from the left',
@@ -586,7 +620,7 @@
         footer_text: 'ImgTools - A pure local image processing tool based on HTML5 Canvas & Cropper.js. No servers, no privacy risks.',
         
         t_convert_title: 'Convert Format (Up to 100)', t_convert_desc: 'Batch convert HEIC, PNG, WEBP, SVG formats to JPG / PNG / WEBP.',
-        t_compress_title: 'Compress Image (Up to 100)', t_compress_desc: 'Batch reduce file size while maintaining visual quality and download directly.',
+        t_compress_title: 'Compress Image (Up to 100)', t_compress_desc: 'Batch reduce file size while maintaining quality; direct or ZIP download.',
         t_crop_title: 'Crop Image (Up to 100)', t_crop_desc: 'Batch crop up to 100 images by preset or custom aspect ratio.',
         t_resize_title: 'Resize (Up to 100)', t_resize_desc: 'Batch scale by custom pixel dimensions or percentage.',
         t_removebg_title: 'Remove Background', t_removebg_desc: 'Uses color tolerance algorithms to remove backgrounds entirely locally.',
@@ -601,6 +635,8 @@
         msg_reading: 'Reading image...', msg_processing: 'Analyzing pixels for background removal...',
         msg_limit_100: '⚠️ Maximum 100 images supported! Kept the first 100.',
         msg_batch_done: '🎉 Batch processing complete! Downloading all images.',
+        msg_batch_zip_done: '🎉 Batch processing complete! Downloaded as ZIP archive.',
+        msg_packing_zip: 'Creating ZIP archive...',
         msg_downloading_files: 'Downloading images...'
       }
     };
@@ -686,6 +722,7 @@
       batchCropRatio: 1,
       batchFiles: [], // { id, file, name, originalSize, newSize, dimensionsText, status, thumbUrl, resultBlob, outName }
       isProcessingBatch: false,
+      batchDownloadMode: 'direct', // 'direct' | 'zip'
       batchRotateDeg: 0,
       batchUpscaleFactor: 2
     };
@@ -756,12 +793,13 @@
           if (isBatch) {
             fileInput.setAttribute('multiple', 'multiple');
             document.getElementById('batch-badge').classList.remove('hide');
+            document.getElementById('batch-download-mode-box').classList.remove('hide');
             document.getElementById('upload-title-text').textContent = t('upload_title_batch');
             document.getElementById('upload-desc-text').textContent = t('upload_desc_batch');
             document.getElementById('placeholder-sub-text').classList.remove('hide');
             
-            if (appState.batchFiles.length > 1) {
-              document.getElementById('btn-download-text').textContent = t('download_batch_btn');
+            if (appState.batchDownloadMode === 'zip') {
+              document.getElementById('btn-download-text').textContent = t('download_batch_zip_btn');
             } else if (appState.batchFiles.length === 1) {
               document.getElementById('btn-download-text').textContent = t('download_single_batch_btn');
             } else {
@@ -770,11 +808,30 @@
           } else {
             fileInput.removeAttribute('multiple');
             document.getElementById('batch-badge').classList.add('hide');
+            document.getElementById('batch-download-mode-box').classList.add('hide');
             document.getElementById('upload-title-text').textContent = t('upload_title');
             document.getElementById('upload-desc-text').textContent = t('upload_desc');
             document.getElementById('placeholder-sub-text').classList.add('hide');
             document.getElementById('btn-download-text').textContent = t('download_btn');
           }
+        };
+
+        window.setDownloadMode = function(mode) {
+          appState.batchDownloadMode = mode;
+          const btnDirect = document.getElementById('btn-dl-mode-direct');
+          const btnZip = document.getElementById('btn-dl-mode-zip');
+          
+          const activeClass = 'py-2 px-2.5 rounded-xl text-xs font-bold border-2 border-blue-600 bg-blue-50 text-blue-700 transition flex items-center justify-center space-x-1';
+          const inactiveClass = 'py-2 px-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition flex items-center justify-center space-x-1';
+          
+          if (mode === 'zip') {
+            btnZip.className = activeClass;
+            btnDirect.className = inactiveClass;
+          } else {
+            btnDirect.className = activeClass;
+            btnZip.className = inactiveClass;
+          }
+          updateWorkspaceModeUI();
         };
 
         window.openWorkspace = function(toolId) {
@@ -1580,20 +1637,36 @@
           progressPercent.textContent = '100%';
           renderBatchList();
 
-          // 直接逐張下載所有完成處理的圖片（不使用 ZIP）
+          // 根據使用者選擇的模式下載：打包 ZIP 或直接逐張下載
           const completedItems = appState.batchFiles.filter(item => item.status === 'done' && item.resultBlob);
           
           if (completedItems.length > 0) {
-            progressLabel.textContent = t('msg_downloading_files');
-            for (let i = 0; i < completedItems.length; i++) {
-              downloadSingleBatchItem(completedItems[i].id);
-              // 間隔短暫時間觸發瀏覽器下載，避免瀏覽器同時攔截過多下載請求
-              if (completedItems.length > 1) {
-                await new Promise(r => setTimeout(r, 150));
+            if (appState.batchDownloadMode === 'zip' && typeof JSZip !== 'undefined') {
+              progressLabel.textContent = t('msg_packing_zip');
+              const zip = new JSZip();
+              completedItems.forEach(item => {
+                zip.file(item.outName, item.resultBlob);
+              });
+              const zipBlob = await zip.generateAsync({ type: 'blob' });
+              const zipUrl = URL.createObjectURL(zipBlob);
+              const a = document.createElement('a');
+              a.href = zipUrl;
+              a.download = `imgtools_${toolId}_${completedItems.length}_images.zip`;
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(zipUrl), 2000);
+              showToast(t('msg_batch_zip_done'), 'success');
+            } else {
+              progressLabel.textContent = t('msg_downloading_files');
+              for (let i = 0; i < completedItems.length; i++) {
+                downloadSingleBatchItem(completedItems[i].id);
+                // 間隔短暫時間觸發瀏覽器下載，避免瀏覽器同時攔截過多下載請求
+                if (completedItems.length > 1) {
+                  await new Promise(r => setTimeout(r, 150));
+                }
               }
-            }
-            if (completedItems.length > 1) {
-              showToast(t('msg_batch_done'), 'success');
+              if (completedItems.length > 1) {
+                showToast(t('msg_batch_done'), 'success');
+              }
             }
           }
 
