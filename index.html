@@ -1,23 +1,30 @@
 <!DOCTYPE html>
-<html lang="zh-HK" id="html-root">
+<html lang="zh-TW" id="html-root">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ImgTools - 支援 100 張批量圖片處理</title>
+  <title>ImgTools - 100% 本機端圖片與文件批量處理</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- HEIC2ANY -->
+  <!-- HEIC2ANY (支援 iPhone HEIC/HEIF 轉換) -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
-  
-  <!-- Cropper.js -->
+
+  <!-- Cropper.js (支援可視化裁切) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 
-  <!-- JSZip (支援批量打包 ZIP 下載) -->
+  <!-- JSZip (支援批量打包 ZIP 下載與解析 DOCX/PPTX) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
+  <!-- PDF.js (支援 PDF 轉圖片) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- Mammoth.js (支援 Word .docx 解析轉圖片) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+  <!-- Google Fonts: Inter + Noto Sans TC -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -37,15 +44,22 @@
     .tool-card { transition: all 0.2s ease-in-out; }
     .tool-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(241, 245, 249, 0.5); border-radius: 9999px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: rgba(241, 245, 249, 0.2); border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #64748b; border-radius: 9999px; }
     .hide { display: none !important; }
     .cropper-container-wrapper { max-width: 100%; max-height: 60vh; }
     input[type="number"] { min-width: 0; }
     
+    /* 透明背景棋盤格樣式 */
     .bg-checkerboard {
-      background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAAXNSR0IArs4c6QAAACVJREFUKFNjZCASMDKgAnv37v3/n4GQgCpGBhoG1NGAOmLQHkIAAIc3H/F7L41zAAAAAElFTkSuQmCC');
-      background-repeat: repeat;
+      background-image: 
+        linear-gradient(45deg, #334155 25%, transparent 25%),
+        linear-gradient(-45deg, #334155 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #334155 75%),
+        linear-gradient(-45deg, transparent 75%, #334155 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+      background-color: #1e293b;
     }
 
     @keyframes slideIn {
@@ -61,9 +75,9 @@
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
       <div class="flex items-center space-x-2 cursor-pointer" id="btn-go-home">
-        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-lg">I</div>
+        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">I</div>
         <span class="text-xl font-bold text-slate-800">ImgTools</span>
-        <span class="ml-2 px-2 py-0.5 bg-emerald-50 text-emerald-600 text-xs font-semibold rounded-full border border-emerald-200" data-i18n="header_local">100% 本機運行</span>
+        <span class="ml-2 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200" data-i18n="header_local">100% 本機運行</span>
       </div>
       <!-- 語言切換器 -->
       <div class="flex items-center">
@@ -80,14 +94,14 @@
   <main id="view-home" class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 py-10 sm:py-16">
     <div class="text-center max-w-3xl mx-auto space-y-4 mb-12">
       <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900" data-i18n="home_title">
-        可批量編輯圖片的 所有工具
+        可批量編輯圖片與文件的 所有工具
       </h1>
       <p class="text-slate-500 text-base sm:text-lg" data-i18n="home_desc">
-        你的純前端本機圖片編輯器就在這裡，而且永遠免費！<br>圖片不會上傳至任何伺服器，完全保障您的隱私安全。
+        你的純前端本機圖片與文件轉換器就在這裡，而且永遠免費！<br>檔案不會上傳至任何伺服器，完全保障您的隱私安全。
       </p>
     </div>
 
-    <!-- 過濾器 -->
+    <!-- 分類過濾器 -->
     <div class="flex flex-wrap justify-center gap-2 mb-10" id="filter-container">
       <button class="filter-btn active px-5 py-2 rounded-full text-sm font-semibold bg-slate-800 text-white shadow-md transition" data-filter="all" data-i18n="filter_all" onclick="renderGrid('all')">全部</button>
       <button class="filter-btn px-5 py-2 rounded-full text-sm font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 transition" data-filter="optimize" data-i18n="filter_optimize" onclick="renderGrid('optimize')">最佳化</button>
@@ -96,29 +110,29 @@
     </div>
 
     <!-- 工具網格 -->
-    <div id="tools-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+    <div id="tools-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
       <!-- JavaScript 動態注入工具卡片 -->
     </div>
   </main>
 
   <!-- 視圖 2：工具工作區 -->
   <main id="view-workspace" class="hide flex-grow max-w-6xl w-full mx-auto px-4 sm:px-6 py-8">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-6">
       <button id="btn-back-home" class="flex items-center space-x-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
         <span data-i18n="ws_back">返回所有工具</span>
       </button>
       <div id="batch-badge" class="hide px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full flex items-center space-x-1">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-        <span data-i18n="batch_supported">支援最多 100 張批量處理</span>
+        <span data-i18n="batch_supported">支援最多 100 個檔案批量處理</span>
       </div>
     </div>
 
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[640px]">
       
-      <!-- 左側：設定區 -->
-      <div class="w-full md:w-80 bg-slate-50 border-r border-slate-200 p-6 flex flex-col h-full shrink-0">
-        <div class="flex items-center space-x-3 mb-6">
+      <!-- 左側：設定面板 -->
+      <div class="w-full md:w-80 lg:w-96 bg-slate-50 border-r border-slate-200 p-6 flex flex-col shrink-0">
+        <div class="flex items-center space-x-3 mb-5">
           <div id="ws-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0"></div>
           <div>
             <h2 id="ws-title" class="text-lg font-bold text-slate-800 leading-tight"></h2>
@@ -127,15 +141,15 @@
         </div>
 
         <!-- 檔案上傳區 -->
-        <div id="upload-zone" class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center hover:bg-slate-100 transition cursor-pointer mb-6 group relative">
-          <input type="file" id="file-input" accept="image/*,.heic,.heif" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+        <div id="upload-zone" class="border-2 border-dashed border-slate-300 rounded-2xl p-5 text-center hover:bg-slate-100 hover:border-blue-400 transition cursor-pointer mb-5 group relative">
+          <input type="file" id="file-input" accept="image/*,.heic,.heif,.pdf,.docx,.doc,.pptx,.ppt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
           <div id="upload-content">
             <svg class="w-8 h-8 text-slate-400 mx-auto mb-2 group-hover:text-blue-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
             <p id="upload-title-text" class="text-sm font-semibold text-slate-700" data-i18n="upload_title">選擇圖片檔案</p>
             <p id="upload-desc-text" class="text-xs text-slate-400 mt-1" data-i18n="upload_desc">支援 HEIC, JPG, PNG 等</p>
           </div>
           <!-- 載入中狀態 -->
-          <div id="upload-loading" class="hide flex flex-col items-center justify-center h-full">
+          <div id="upload-loading" class="hide flex flex-col items-center justify-center py-2">
             <svg class="animate-spin mx-auto h-6 w-6 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -144,66 +158,85 @@
           </div>
         </div>
 
-        <!-- 動態設定面板 -->
+        <!-- 動態工具設定區 -->
         <div id="settings-panel" class="flex-grow space-y-4 opacity-50 pointer-events-none transition-opacity duration-300">
-          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 pb-2 border-b border-slate-200" data-i18n="settings_title">工具設定</div>
-          
-          <!-- 轉換設定 -->
-          <div id="setting-convert" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700" data-i18n="convert_label">選擇輸出格式</label>
-            <select id="format-select" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none bg-white">
-              <option value="image/jpeg">JPEG (.jpg)</option>
-              <option value="image/png">PNG (.png)</option>
-              <option value="image/webp">WEBP (.webp)</option>
-              <option value="image/bmp">BMP (.bmp)</option>
-            </select>
-            <div id="convert-quality-box" class="pt-2">
-              <label class="block text-xs font-semibold text-slate-600 mb-1" data-i18n="convert_quality">輸出畫質 (適用於 JPG/WEBP)</label>
-              <input type="range" id="convert-quality-slider" min="0.5" max="1" step="0.05" value="0.9" class="w-full accent-yellow-500">
-              <div class="text-xs text-slate-500 text-right" id="convert-quality-val">90%</div>
-            </div>
-          </div>
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider pb-2 border-b border-slate-200" data-i18n="settings_title">工具設定</div>
 
-          <!-- 壓縮設定 -->
-          <div id="setting-compress" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700" data-i18n="compress_label">圖片品質 (壓縮率)</label>
-            <input type="range" id="compress-slider" min="0.1" max="1" step="0.05" value="0.7" class="w-full accent-green-600">
-            <div class="text-xs text-slate-500 text-right mt-1" id="compress-val">70%</div>
-            
-            <div class="pt-1">
-              <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="compress_format_label">壓縮輸出格式</label>
-              <select id="compress-format" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
-                <option value="image/jpeg">JPEG (.jpg) - 最佳相容性</option>
-                <option value="image/webp">WEBP (.webp) - 體積最小</option>
+          <!-- 1. 格式轉換設定 -->
+          <div id="setting-convert" class="hide space-y-3">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1" data-i18n="convert_label">選擇輸出格式</label>
+              <select id="format-select" onchange="onConvertFormatChange()" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none bg-white">
+                <option value="image/jpeg">JPEG (.jpg)</option>
+                <option value="image/png">PNG (.png)</option>
+                <option value="image/webp">WEBP (.webp)</option>
+                <option value="image/bmp">BMP (.bmp)</option>
               </select>
             </div>
-            <p class="text-[11px] text-slate-400 leading-tight mt-2" data-i18n="compress_hint">提示：數值越小檔案越小，但畫質越低。批量處理時將套用至所有圖片。</p>
+            <!-- 僅對 JPG / WEBP 顯示畫質滑桿 -->
+            <div id="convert-quality-box" class="space-y-1">
+              <div class="flex justify-between text-xs font-semibold text-slate-700">
+                <span data-i18n="convert_quality">輸出畫質 (適用於 JPG/WEBP)</span>
+                <span id="convert-quality-val" class="text-blue-600 font-bold">85%</span>
+              </div>
+              <input type="range" id="convert-quality-slider" min="0.1" max="1" step="0.05" value="0.85" class="w-full accent-blue-600">
+            </div>
+            <p id="convert-lossless-hint" class="hide text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-2 leading-snug" data-i18n="convert_lossless_hint">
+              提示：PNG / BMP 為無損格式，無法調整壓縮率，高像素相機 JPG 轉為 PNG 時檔案體積可能會明顯增大。
+            </p>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="doc_scale_label">文件轉圖片解析度 (PDF/Word/PPT)</label>
+              <select id="doc-scale-select" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                <option value="1.5">標準清晰 (1.5x)</option>
+                <option value="2.0" selected>高清推薦 (2.0x)</option>
+                <option value="3.0">超清印刷 (3.0x)</option>
+              </select>
+            </div>
           </div>
 
-          <!-- 裁切設定 -->
-          <div id="setting-crop" class="hide space-y-3">
-            <label class="block text-sm font-semibold text-slate-700" data-i18n="crop_label">批量裁切比例 (自動置中裁切)</label>
-            <select id="crop-ratio" onchange="changeCropRatio(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500/20 text-sm outline-none bg-white">
-              <option value="1" data-i18n="crop_1_1">1:1 (正方形)</option>
-              <option value="1.33333" data-i18n="crop_4_3">4:3 (標準橫向)</option>
-              <option value="0.75" data-i18n="crop_3_4">3:4 (標準直向)</option>
-              <option value="1.77777" data-i18n="crop_16_9">16:9 (寬螢幕)</option>
-              <option value="0.5625" data-i18n="crop_9_16">9:16 (手機直向)</option>
-              <option value="custom" data-i18n="crop_custom">自訂寬高比 / 拖曳框選</option>
-            </select>
+          <!-- 2. 壓縮圖片設定 -->
+          <div id="setting-compress" class="hide space-y-3">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1" data-i18n="compress_format_label">壓縮輸出格式</label>
+              <select id="compress-format" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                <option value="image/jpeg">JPEG (.jpg)</option>
+                <option value="image/webp">WEBP (.webp - 體積更小)</option>
+              </select>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs font-semibold text-slate-700">
+                <span data-i18n="compress_label">圖片品質 (壓縮率)</span>
+                <span id="compress-val" class="text-emerald-600 font-bold">75%</span>
+              </div>
+              <input type="range" id="compress-slider" min="0.1" max="0.95" step="0.05" value="0.75" class="w-full accent-emerald-600">
+            </div>
+            <p class="text-[11px] text-slate-400 leading-tight" data-i18n="compress_hint">提示：數值越小檔案越小，但畫質越低。批量處理時將套用至所有圖片。</p>
+          </div>
 
-            <div id="crop-custom-box" class="hide grid grid-cols-2 gap-2 pt-1">
+          <!-- 3. 批量裁剪設定 -->
+          <div id="setting-crop" class="hide space-y-3">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-1" data-i18n="crop_label">批量裁切比例</label>
+              <select id="crop-ratio" onchange="changeBatchCropRatio(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
+                <option value="free" data-i18n="crop_free">自由拖曳 / 自訂比例</option>
+                <option value="1" selected data-i18n="crop_1_1">1:1 (正方形)</option>
+                <option value="1.33333" data-i18n="crop_4_3">4:3 (標準橫向)</option>
+                <option value="0.75" data-i18n="crop_3_4">3:4 (標準直向)</option>
+                <option value="1.77777" data-i18n="crop_16_9">16:9 (寬螢幕)</option>
+                <option value="0.5625" data-i18n="crop_9_16">9:16 (手機直向)</option>
+              </select>
+            </div>
+            <div id="crop-custom-box" class="hide grid grid-cols-2 gap-2">
               <div>
-                <label class="block text-[11px] font-semibold text-slate-600 mb-1" data-i18n="crop_ratio_w">比例寬</label>
-                <input type="number" id="crop-custom-w" value="16" min="1" oninput="updateCustomCropRatio()" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm outline-none bg-white">
+                <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="crop_ratio_w">比例寬</label>
+                <input type="number" id="crop-custom-w" value="16" min="1" oninput="updateCustomCropRatio()" class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-sm bg-white outline-none">
               </div>
               <div>
-                <label class="block text-[11px] font-semibold text-slate-600 mb-1" data-i18n="crop_ratio_h">比例高</label>
-                <input type="number" id="crop-custom-h" value="9" min="1" oninput="updateCustomCropRatio()" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-sm outline-none bg-white">
+                <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="crop_ratio_h">比例高</label>
+                <input type="number" id="crop-custom-h" value="9" min="1" oninput="updateCustomCropRatio()" class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-sm bg-white outline-none">
               </div>
             </div>
-
-            <div class="pt-1">
+            <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="crop_anchor_label">裁切對齊位置</label>
               <select id="crop-anchor" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm outline-none bg-white">
                 <option value="center" data-i18n="crop_anchor_center">正中央 (預設)</option>
@@ -211,45 +244,139 @@
                 <option value="bottom" data-i18n="crop_anchor_bottom">靠下 / 靠右對齊</option>
               </select>
             </div>
-            <p class="text-[11px] text-slate-400 leading-tight" data-i18n="crop_batch_hint">提示：可在右側預覽框微調比例，點擊下方按鈕即可依設定比例批量裁切所有圖片。</p>
+            <p class="text-[11px] text-slate-400 leading-tight" data-i18n="crop_batch_hint">提示：點擊右側圖片「預覽」可檢查框線，點擊下方按鈕即批量裁切全部圖片。</p>
           </div>
 
-          <!-- 刪除背景設定 -->
-          <div id="setting-removebg" class="hide space-y-3">
-            <p class="text-xs text-slate-600 mb-2" data-i18n="rmbg_hint">使用純 Canvas 色彩比對進行去背 (不需載入 AI 模型)。</p>
-            <div class="space-y-2">
-              <label class="block text-xs font-semibold text-slate-700" data-i18n="rmbg_color">選擇要去除的背景顏色</label>
-              <input type="color" id="removebg-color" value="#ffffff" class="w-full h-8 rounded-lg cursor-pointer">
+          <!-- 4. AI 去背設定 (三模式本機引擎) -->
+          <div id="setting-removebg" class="hide space-y-4">
+            <!-- 三模式選擇 -->
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider" data-i18n="rmbg_mode_label">去背方式</label>
+              <div class="grid grid-cols-3 gap-1 bg-slate-200/80 p-1 rounded-xl">
+                <button type="button" id="btn-rmbg-mode-smart" onclick="setRmbgMode('ai_smart')" class="py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-slate-800 shadow-sm transition leading-tight" data-i18n="rmbg_mode_smart">智慧 AI<br><span class="text-[10px] font-normal text-slate-500">通用/寵物</span></button>
+                <button type="button" id="btn-rmbg-mode-fast" onclick="setRmbgMode('ai_fast')" class="py-2 px-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:text-slate-800 transition leading-tight" data-i18n="rmbg_mode_fast">快速 AI<br><span class="text-[10px] font-normal text-slate-500">僅人像</span></button>
+                <button type="button" id="btn-rmbg-mode-color" onclick="setRmbgMode('color')" class="py-2 px-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:text-slate-800 transition leading-tight" data-i18n="rmbg_mode_color">色彩去背<br><span class="text-[10px] font-normal text-slate-500">離線免模型</span></button>
+              </div>
+              <p id="rmbg-mode-hint" class="text-[11px] text-slate-500 leading-relaxed" data-i18n="rmbg_smart_hint">
+                使用 RMBG-1.4 通用模型（支援人像、寵物、商品），100% 本機運算，首次執行自動快取。
+              </p>
             </div>
-            <div class="space-y-1 mt-3">
-              <label class="block text-xs font-semibold text-slate-700" data-i18n="rmbg_tolerance">色彩容差度</label>
-              <input type="range" id="removebg-tolerance" min="0" max="150" step="5" value="30" class="w-full accent-emerald-600">
-              <div class="text-[10px] text-slate-400 flex justify-between">
-                <span data-i18n="rmbg_strict">嚴格</span>
-                <span data-i18n="rmbg_loose">寬鬆</span>
+
+            <!-- AI 模式專屬按鈕與進度條 -->
+            <div id="rmbg-ai-controls" class="space-y-2.5">
+              <button type="button" id="btn-run-ai-rmbg" onclick="runAiBackgroundRemoval()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                <span data-i18n="rmbg_run_ai_btn">開始 AI 自動去背</span>
+              </button>
+
+              <!-- AI 下載與推理進度條 -->
+              <div id="ai-rmbg-progress-box" class="hide space-y-1.5 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                <div class="flex justify-between text-[11px] font-semibold text-emerald-700">
+                  <span id="ai-rmbg-progress-text" class="truncate pr-2">準備 AI 模型中...</span>
+                  <span id="ai-rmbg-progress-pct" class="shrink-0">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                  <div id="ai-rmbg-progress-bar" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-200" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <!-- 診斷錯誤與快速切換提示卡 -->
+              <div id="ai-rmbg-error-box" class="hide bg-rose-50 border border-rose-200 rounded-xl p-3 space-y-2">
+                <p id="ai-rmbg-error-msg" class="text-[11px] text-rose-700 leading-relaxed font-medium"></p>
+                <div class="flex gap-1.5">
+                  <button type="button" onclick="setRmbgMode('ai_fast')" class="flex-1 py-1.5 px-2 bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold transition">改用快速 AI (人像)</button>
+                  <button type="button" onclick="setRmbgMode('color')" class="flex-1 py-1.5 px-2 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold transition">改用色彩去背</button>
+                </div>
               </div>
             </div>
-            <button onclick="applyColorRemoval()" class="w-full py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-sm font-bold rounded-lg transition mt-4 flex items-center justify-center space-x-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-              <span data-i18n="rmbg_btn">套用去背</span>
+
+            <!-- 色彩去背專屬設定 -->
+            <div id="rmbg-color-controls" class="hide space-y-3 bg-white p-3 rounded-xl border border-slate-200">
+              <div class="space-y-1">
+                <label class="block text-xs font-semibold text-slate-700" data-i18n="rmbg_color">選擇要去除的背景顏色</label>
+                <input type="color" id="removebg-color" value="#ffffff" class="w-full h-8 rounded-lg cursor-pointer">
+              </div>
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold text-slate-700">
+                  <span data-i18n="rmbg_tolerance">色彩容差度</span>
+                  <span id="removebg-tol-val" class="text-emerald-600 font-bold">35</span>
+                </div>
+                <input type="range" id="removebg-tolerance" min="0" max="150" step="5" value="35" oninput="document.getElementById('removebg-tol-val').textContent=this.value" class="w-full accent-emerald-600">
+                <div class="text-[10px] text-slate-400 flex justify-between">
+                  <span data-i18n="rmbg_strict">嚴格</span>
+                  <span data-i18n="rmbg_loose">寬鬆</span>
+                </div>
+              </div>
+              <button type="button" onclick="applyColorRemoval()" class="w-full py-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold rounded-lg transition" data-i18n="rmbg_btn">套用色彩去背</button>
+            </div>
+
+            <!-- 背景替換 (透明 / 白底 / 藍底 / 自訂) -->
+            <div class="space-y-1.5 pt-2 border-t border-slate-200">
+              <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider" data-i18n="rmbg_bg_label">背景替換</label>
+              <div class="grid grid-cols-4 gap-1.5">
+                <button type="button" onclick="setRmbgBg('transparent')" data-bg="transparent" class="rmbg-bg-btn py-1.5 rounded-lg text-xs font-bold border-2 border-blue-600 bg-blue-50 text-blue-700 transition" data-i18n="rmbg_bg_transparent">透明</button>
+                <button type="button" onclick="setRmbgBg('#ffffff')" data-bg="#ffffff" class="rmbg-bg-btn py-1.5 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition" data-i18n="rmbg_bg_white">白色</button>
+                <button type="button" onclick="setRmbgBg('#2563eb')" data-bg="#2563eb" class="rmbg-bg-btn py-1.5 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition" data-i18n="rmbg_bg_blue">藍色</button>
+                <label class="rmbg-bg-btn py-1.5 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition text-center cursor-pointer relative overflow-hidden" data-bg="custom">
+                  <span data-i18n="rmbg_bg_custom">自訂</span>
+                  <input type="color" id="rmbg-custom-bg-color" value="#ef4444" onchange="setRmbgBg(this.value, true)" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer">
+                </label>
+              </div>
+            </div>
+
+            <!-- 邊緣柔和度 (0-50) -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs font-semibold text-slate-700">
+                <span data-i18n="rmbg_feather_label">邊緣柔和度</span>
+                <span id="rmbg-feather-val" class="text-emerald-600 font-bold">10</span>
+              </div>
+              <input type="range" id="rmbg-feather-slider" min="0" max="50" step="1" value="10" oninput="onRmbgFeatherChange(this.value)" class="w-full accent-emerald-600">
+            </div>
+
+            <!-- 手動微調畫筆 (保留 / 移除 / 粗細 / 還原) -->
+            <div class="space-y-2 pt-2 border-t border-slate-200">
+              <div class="flex items-center justify-between">
+                <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider" data-i18n="rmbg_brush_label">手動微調畫筆</label>
+                <button type="button" onclick="resetRmbgMaskEdits()" class="text-[11px] font-semibold text-slate-500 hover:text-rose-600 transition" data-i18n="rmbg_brush_reset">還原微調</button>
+              </div>
+              <div class="grid grid-cols-3 gap-1.5">
+                <button type="button" onclick="setRmbgBrushTool('none')" data-brush="none" class="rmbg-brush-btn py-1.5 rounded-lg text-xs font-bold border-2 border-slate-700 bg-slate-800 text-white transition" data-i18n="rmbg_brush_off">檢視</button>
+                <button type="button" onclick="setRmbgBrushTool('keep')" data-brush="keep" class="rmbg-brush-btn py-1.5 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-emerald-700 hover:bg-emerald-50 transition" data-i18n="rmbg_brush_keep">＋保留</button>
+                <button type="button" onclick="setRmbgBrushTool('erase')" data-brush="erase" class="rmbg-brush-btn py-1.5 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-rose-600 hover:bg-rose-50 transition" data-i18n="rmbg_brush_erase">－移除</button>
+              </div>
+              <div id="rmbg-brush-size-box" class="hide space-y-1 pt-1">
+                <div class="flex justify-between text-[11px] text-slate-600">
+                  <span data-i18n="rmbg_brush_size">畫筆粗細</span>
+                  <span id="rmbg-brush-size-val" class="font-bold">28 px</span>
+                </div>
+                <input type="range" id="rmbg-brush-size" min="5" max="120" step="1" value="28" oninput="document.getElementById('rmbg-brush-size-val').textContent = this.value + ' px'" class="w-full accent-slate-700">
+              </div>
+            </div>
+
+            <!-- 按住對照原圖按鈕 (支援滑鼠與觸控) -->
+            <button type="button" id="btn-rmbg-compare"
+              onpointerdown="toggleRmbgCompare(true)" onpointerup="toggleRmbgCompare(false)" onpointerleave="toggleRmbgCompare(false)" onpointercancel="toggleRmbgCompare(false)"
+              class="w-full py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center space-x-1.5 select-none touch-none">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              <span data-i18n="rmbg_compare_btn">按住對照原圖</span>
             </button>
           </div>
 
-          <!-- 提升圖片質量設定 -->
+          <!-- 5. 提升圖片質量設定 -->
           <div id="setting-upscale" class="hide space-y-3">
             <div class="flex items-center justify-between">
               <label class="block text-sm font-semibold text-slate-700" data-i18n="upscale_label">高解析度放大倍率</label>
               <span id="upscale-badge" class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-md">2x</span>
             </div>
             <div class="grid grid-cols-3 gap-2">
-              <button onclick="selectUpscaleFactor(2)" id="btn-upscale-2" class="upscale-opt py-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-700 rounded-xl text-sm font-bold transition">2x</button>
-              <button onclick="selectUpscaleFactor(4)" id="btn-upscale-4" class="upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">4x</button>
-              <button onclick="selectUpscaleFactor(8)" id="btn-upscale-8" class="upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">8x</button>
+              <button type="button" onclick="selectUpscaleFactor(2)" id="btn-upscale-2" class="upscale-opt py-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-700 rounded-xl text-sm font-bold transition">2x</button>
+              <button type="button" onclick="selectUpscaleFactor(4)" id="btn-upscale-4" class="upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">4x</button>
+              <button type="button" onclick="selectUpscaleFactor(8)" id="btn-upscale-8" class="upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition">8x</button>
             </div>
             <p class="text-[11px] text-slate-400 leading-tight" data-i18n="upscale_hint">選定倍率後，點擊下方按鈕即可批量放大所有圖片。</p>
           </div>
 
-          <!-- 調整大小設定 -->
+          <!-- 6. 調整大小設定 -->
           <div id="setting-resize" class="hide space-y-3">
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1" data-i18n="resize_mode_label">縮放模式</label>
@@ -283,18 +410,18 @@
             </div>
           </div>
 
-          <!-- 旋轉設定 -->
+          <!-- 7. 旋轉圖片設定 -->
           <div id="setting-rotate" class="hide space-y-3">
             <div class="flex items-center justify-between">
               <label class="block text-sm font-semibold text-slate-700" data-i18n="rotate_label">旋轉角度設定</label>
               <span id="rotate-angle-badge" class="px-2 py-0.5 bg-cyan-100 text-cyan-800 text-xs font-bold rounded-md">0°</span>
             </div>
             <div class="grid grid-cols-2 gap-2">
-              <button onclick="setBatchRotate(-90)" class="py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
+              <button type="button" onclick="setBatchRotate(-90)" class="py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
                 <span data-i18n="rotate_left">左旋 90°</span>
               </button>
-              <button onclick="setBatchRotate(90)" class="py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
+              <button type="button" onclick="setBatchRotate(90)" class="py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition flex justify-center items-center space-x-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"></path></svg>
                 <span data-i18n="rotate_right">右旋 90°</span>
               </button>
@@ -302,7 +429,7 @@
             <p class="text-[11px] text-slate-400 leading-tight" data-i18n="rotate_hint">可連續點擊調整角度，系統將套用至佇列中的所有圖片。</p>
           </div>
 
-          <!-- 浮水印設定 -->
+          <!-- 8. 浮水印設定 -->
           <div id="setting-watermark" class="hide space-y-3">
             <div>
               <label class="block text-sm font-semibold text-slate-700 mb-1" data-i18n="wm_label">文字浮水印</label>
@@ -357,39 +484,35 @@
           </div>
         </div>
 
-        <!-- 操作按鈕區 -->
+        <!-- 底部操作按鈕區 -->
         <div class="mt-4 pt-3 border-t border-slate-200 space-y-2">
-          <button id="btn-download" onclick="handleDownloadAction()" disabled class="w-full py-3.5 px-4 bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
+          <button type="button" id="btn-download" onclick="handleDownloadAction()" disabled class="w-full py-3.5 px-4 bg-blue-600 disabled:bg-slate-300 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition flex items-center justify-center space-x-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
             <span id="btn-download-text" data-i18n="download_btn">處理並下載</span>
           </button>
-          <button id="btn-clear-batch" onclick="clearBatchFiles()" class="hide w-full py-2 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition" data-i18n="clear_all">
-            清空所有圖片
+          <button type="button" id="btn-clear-batch" onclick="clearBatchFiles()" class="hide w-full py-2 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-semibold rounded-xl transition" data-i18n="clear_all">
+            清空所有檔案
           </button>
         </div>
       </div>
 
-      <!-- 右側：畫布/預覽區 或 批量清單區 -->
-      <div class="flex-grow bg-slate-800 p-4 md:p-6 flex flex-col relative overflow-hidden min-h-[450px] bg-checkerboard">
+      <!-- 右側：預覽畫布 / 批量清單區 -->
+      <div class="flex-grow bg-slate-800 p-4 md:p-6 flex flex-col relative overflow-hidden min-h-[460px] bg-checkerboard">
         
         <!-- 空狀態佔位符 -->
-        <div id="preview-placeholder" class="m-auto text-center text-slate-300 flex flex-col items-center bg-slate-800/85 p-8 rounded-2xl backdrop-blur-sm max-w-md border border-slate-700/50">
-          <svg class="w-16 h-16 mb-4 opacity-75 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-          <p id="placeholder-main-text" class="font-medium text-base" data-i18n="preview_empty">尚未載入圖片，請從左側上傳</p>
-          <p id="placeholder-sub-text" class="hide text-xs text-slate-400 mt-2" data-i18n="preview_empty_batch">可一次選取最多 100 張圖片進行批量處理</p>
+        <div id="preview-placeholder" class="m-auto text-center text-slate-300 flex flex-col items-center bg-slate-900/85 p-8 rounded-2xl backdrop-blur-sm max-w-md border border-slate-700/50 shadow-xl">
+          <svg class="w-16 h-16 mb-4 opacity-80 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <p id="placeholder-main-text" class="font-medium text-base" data-i18n="preview_empty">尚未載入檔案，請從左側上傳</p>
+          <p id="placeholder-sub-text" class="hide text-xs text-slate-400 mt-2" data-i18n="preview_empty_batch">可一次選取最多 100 個檔案進行批量處理</p>
         </div>
         
-        <!-- 單圖 Canvas 預覽 -->
-        <div id="single-canvas-wrapper" class="hide m-auto flex items-center justify-center w-full h-full">
-          <canvas id="main-canvas" class="max-w-full max-h-[550px] object-contain shadow-2xl rounded"></canvas>
+        <!-- 單圖 Canvas 預覽 (AI 去背專用) -->
+        <div id="single-canvas-wrapper" class="hide m-auto flex flex-col items-center justify-center w-full h-full space-y-3">
+          <div id="rmbg-resize-notice" class="hide px-3.5 py-1.5 bg-slate-900/90 text-amber-300 text-xs font-medium rounded-lg border border-amber-500/40 backdrop-blur-sm shadow"></div>
+          <canvas id="main-canvas" class="max-w-full max-h-[560px] object-contain shadow-2xl rounded-lg border border-slate-700/50"></canvas>
         </div>
         
-        <!-- 單圖 Cropper 預覽 -->
-        <div id="cropper-container" class="hide m-auto cropper-container-wrapper w-full h-full flex items-center justify-center">
-          <img id="crop-image" class="max-w-full max-h-full" src="" alt="Cropper Image">
-        </div>
-
-        <!-- 批量圖片列表視圖 (支援高達 100 張) -->
+        <!-- 批量檔案列表視圖 (支援高達 100 張) -->
         <div id="batch-list-view" class="hide w-full h-full flex flex-col bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-700 p-4 text-slate-200">
           <!-- 批量裁切專屬即時比例預覽面板 -->
           <div id="batch-crop-preview-box" class="hide mb-3 bg-slate-800/95 border border-slate-700 rounded-xl p-3">
@@ -412,8 +535,8 @@
             </div>
             <label class="cursor-pointer px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold rounded-lg transition flex items-center space-x-1">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-              <span data-i18n="batch_add_more">繼續新增圖片</span>
-              <input type="file" id="batch-add-input" multiple accept="image/*,.heic,.heif" class="hidden">
+              <span data-i18n="batch_add_more">繼續新增檔案</span>
+              <input type="file" id="batch-add-input" multiple accept="image/*,.heic,.heif,.pdf,.docx,.doc,.pptx,.ppt" class="hidden">
             </label>
           </div>
 
@@ -424,7 +547,6 @@
         </div>
 
       </div>
-
     </div>
   </main>
 
@@ -432,76 +554,78 @@
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <footer class="bg-white border-t border-slate-200 mt-auto py-6 text-center text-sm text-slate-500" data-i18n="footer_text">
-    ImgTools - 基於 HTML5 Canvas, Cropper.js 的純本機端圖片處理工具。無需伺服器，無隱私風險。
+    ImgTools - 基於 HTML5 Canvas、Transformers.js、MediaPipe、PDF.js 與 Mammoth.js 的純本機端處理工具。無需伺服器，無隱私風險。
   </footer>
 
-  <!-- 多語系與核心邏輯 -->
+  <!-- 核心邏輯腳本 -->
   <script>
-    // --- 1. 多語系 (i18n) 字典 ---
+    // =========================================================================
+    // 1. 多語系 (i18n) 字典
+    // =========================================================================
     const i18n = {
       'zh-TW': {
         header_local: '100% 本機運行',
-        home_title: '可批量編輯圖片的 所有工具',
-        home_desc: '你的純前端本機圖片編輯器就在這裡，而且永遠免費！<br>圖片不會上傳至任何伺服器，完全保障您的隱私安全。',
+        home_title: '可批量編輯圖片與文件的 所有工具',
+        home_desc: '你的純前端本機圖片與文件轉換器就在這裡，而且永遠免費！<br>檔案不會上傳至任何伺服器，完全保障您的隱私安全。',
         filter_all: '全部', filter_optimize: '最佳化', filter_edit: '編輯', filter_convert: '轉換',
         ws_back: '返回所有工具',
-        batch_supported: '支援最多 100 張批量處理',
-        upload_title: '選擇圖片檔案', upload_desc: '支援 HEIC, JPG, PNG 等',
-        upload_title_batch: '選擇多張圖片 (最多 100 張)', upload_desc_batch: '支援批量拖曳或選取 HEIC, JPG, PNG, WEBP',
+        batch_supported: '支援最多 100 個檔案批量處理',
+        upload_title: '選擇圖片檔案', upload_desc: '支援 HEIC, JPG, PNG, WEBP 等',
+        upload_title_batch: '選擇檔案 (最多 100 個)', upload_desc_batch: '支援 PDF, Word, PPT, HEIC, JPG, PNG, WEBP',
+        upload_desc_img_batch: '支援 HEIC, JPG, PNG, WEBP 等 (最多 100 張)',
         loading: '處理中...',
         settings_title: '工具設定',
         convert_label: '選擇輸出格式',
         convert_quality: '輸出畫質 (適用於 JPG/WEBP)',
-        compress_label: '圖片品質 (壓縮率)',
+        convert_lossless_hint: '提示：PNG / BMP 為無損格式，無法調整壓縮率，高像素相機 JPG 轉為 PNG 時檔案體積可能會明顯增大。',
+        doc_scale_label: '文件轉圖片解析度 (PDF/Word/PPT)',
         compress_format_label: '壓縮輸出格式',
+        compress_label: '圖片品質 (壓縮率)',
         compress_hint: '提示：數值越小檔案越小，但畫質越低。批量處理時將套用至所有圖片。',
-        crop_label: '批量裁切比例 (自動置中裁切)', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (標準橫向)', crop_3_4: '3:4 (標準直向)', crop_16_9: '16:9 (寬螢幕)', crop_9_16: '9:16 (手機直向)', crop_custom: '自訂寬高比 / 拖曳框選',
+        crop_label: '批量裁切比例', crop_free: '自由拖曳 / 自訂比例', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (標準橫向)', crop_3_4: '3:4 (標準直向)', crop_16_9: '16:9 (寬螢幕)', crop_9_16: '9:16 (手機直向)',
         crop_ratio_w: '比例寬', crop_ratio_h: '比例高',
         crop_anchor_label: '裁切對齊位置', crop_anchor_center: '正中央 (預設)', crop_anchor_top: '靠上 / 靠左對齊 (保留人像頭部)', crop_anchor_bottom: '靠下 / 靠右對齊',
-        crop_batch_hint: '提示：可在右側預覽框微調比例，點擊下方按鈕即可依設定比例批量裁切所有圖片。',
+        crop_batch_hint: '提示：點擊右側圖片「預覽」可檢查框線，點擊下方按鈕即批量裁切全部圖片。',
         crop_preview_tip: '拖曳框線可自訂比例並同步至全部圖片',
-        rmbg_hint: '使用純 Canvas 色彩比對進行去背 (不需載入 AI 模型)。', rmbg_color: '選擇要去除的背景顏色', rmbg_tolerance: '色彩容差度', rmbg_strict: '嚴格', rmbg_loose: '寬鬆', rmbg_btn: '套用去背',
+        rmbg_mode_label: '去背方式',
+        rmbg_smart_hint: '使用 RMBG-1.4 通用模型（支援人像、寵物、商品），100% 本機運算，首次執行自動快取。',
+        rmbg_fast_hint: '使用 MediaPipe 輕量人像模型 (~250KB)，約 1 秒極速載入，專為人像自拍與證件照優化。',
+        rmbg_color_hint: '使用純 Canvas 色彩容差演算法，完全離線免下載模型，適合純色背景去背。',
+        rmbg_run_ai_btn: '開始 AI 自動去背',
+        rmbg_color: '選擇要去除的背景顏色', rmbg_tolerance: '色彩容差度', rmbg_strict: '嚴格', rmbg_loose: '寬鬆', rmbg_btn: '套用色彩去背',
+        rmbg_bg_label: '背景替換', rmbg_bg_transparent: '透明', rmbg_bg_white: '白色', rmbg_bg_blue: '藍色', rmbg_bg_custom: '自訂',
+        rmbg_feather_label: '邊緣柔和度',
+        rmbg_brush_label: '手動微調畫筆', rmbg_brush_reset: '還原微調', rmbg_brush_off: '檢視', rmbg_brush_keep: '＋保留', rmbg_brush_erase: '－移除', rmbg_brush_size: '畫筆粗細',
+        rmbg_compare_btn: '按住對照原圖',
         upscale_label: '高解析度放大倍率', upscale_hint: '選定倍率後，點擊下方按鈕即可批量放大所有圖片。',
         resize_mode_label: '縮放模式', resize_mode_px: '指定像素尺寸 (px)', resize_mode_pct: '按百分比縮放 (%)',
         resize_w: '寬度 (px)', resize_h: '高度 (px)', resize_aspect: '依原圖比例自動計算高度', resize_pct_label: '縮放比例',
         rotate_label: '旋轉角度設定', rotate_left: '左旋 90°', rotate_right: '右旋 90°', rotate_hint: '可連續點擊調整角度，系統將套用至佇列中的所有圖片。',
         wm_label: '文字浮水印', wm_color: '顏色', wm_opacity: '透明度', wm_pos: '浮水印位置',
         wm_pos_br: '右下角', wm_pos_bl: '左下角', wm_pos_tr: '右上角', wm_pos_tl: '左上角', wm_pos_center: '正中央',
-        download_mode_label: '下載方式',
-        download_mode_direct: '直接逐張下載',
-        download_mode_zip: '打包 ZIP 下載',
-        download_btn: '處理並下載',
-        download_batch_btn: '批量處理並逐張下載',
-        download_batch_zip_btn: '批量處理並打包 ZIP 下載',
-        download_single_batch_btn: '處理並下載圖片',
-        clear_all: '清空所有圖片',
-        preview_empty: '尚未載入圖片，請從左側上傳',
-        preview_empty_batch: '可一次選取最多 100 張圖片進行批量處理',
-        batch_queue_title: '批量處理佇列',
-        batch_add_more: '繼續新增圖片',
-        status_ready: '等待處理',
-        status_processing: '處理中...',
-        status_done: '完成',
-        status_error: '失敗',
-        footer_text: 'ImgTools - 基於 HTML5 Canvas, Cropper.js 的純本機端圖片處理工具。無需伺服器，無隱私風險。',
-        
-        // 工具名稱與描述
-        t_convert_title: '格式轉換 (支援100張)', t_convert_desc: '批量轉換 HEIC, PNG, WEBP, SVG 等格式至 JPG / PNG / WEBP。',
+        download_mode_label: '下載方式', download_mode_direct: '直接逐張下載', download_mode_zip: '打包 ZIP 下載',
+        download_btn: '處理並下載', download_batch_btn: '批量處理並逐張下載', download_batch_zip_btn: '批量處理並打包 ZIP 下載', download_single_batch_btn: '處理並下載圖片',
+        clear_all: '清空所有檔案',
+        preview_empty: '尚未載入檔案，請從左側上傳',
+        preview_empty_batch: '可一次選取最多 100 個檔案進行批量處理',
+        batch_queue_title: '批量處理佇列', batch_add_more: '繼續新增檔案',
+        status_ready: '等待處理', status_processing: '處理中...', status_done: '完成', status_error: '失敗',
+        footer_text: 'ImgTools - 基於 HTML5 Canvas、Transformers.js、MediaPipe、PDF.js 與 Mammoth.js 的純本機端處理工具。無需伺服器，無隱私風險。',
+
+        t_convert_title: '格式轉換 (PDF/Word/PPT)', t_convert_desc: '批量將 PDF, Word, PPT 及 HEIC, WEBP 等轉換為 JPG / PNG。',
         t_compress_title: '壓縮圖片 (支援100張)', t_compress_desc: '批量降低檔案大小同時保持視覺品質，支援直接或 ZIP 下載。',
-        t_crop_title: '裁剪圖片 (支援100張)', t_crop_desc: '批量依指定長寬比或自訂比例裁切最多 100 張圖片。',
+        t_crop_title: '裁剪圖片 (支援100張)', t_crop_desc: '批量依指定長寬比或自由拖曳裁切最多 100 張圖片。',
         t_resize_title: '調整大小 (支援100張)', t_resize_desc: '批量按自訂像素尺寸或百分比縮放圖片。',
-        t_removebg_title: '刪除背景', t_removebg_desc: '運用色彩容差演算法去背，完全支援本機直接執行。',
+        t_removebg_title: 'AI 去背', t_removebg_desc: '智慧通用 AI、極速人像 AI 與離線色彩三模式去背，支援筆刷微調。',
         t_upscale_title: '提升圖片質量 (支援100張)', t_upscale_desc: '批量以 2x / 4x / 8x 高解析度平滑放大圖像。',
         t_rotate_title: '旋轉圖片 (支援100張)', t_rotate_desc: '批量 90 度旋轉您的照片並自動保留原畫質。',
         t_watermark_title: '加入浮水印 (支援100張)', t_watermark_desc: '批量為最多 100 張圖片加上自訂文字保護標記。',
 
-        // 提示訊息
-        msg_crop_success: '✅ 裁切完成！請點擊「處理並下載」。',
-        msg_resize_err: '請輸入有效的寬度與高度',
-        msg_rmbg_success: '✅ 去背完成！請點擊下方按鈕下載 PNG (保留透明背景)。',
+        msg_rmbg_success: '✅ 去背完成！可調整背景色、邊緣柔和度或用畫筆微調後下載。',
         msg_need_upload: '請先上傳圖片',
-        msg_reading: '讀取圖片中...', msg_processing: '像素分析去背中...',
-        msg_limit_100: '⚠️ 最多支援 100 張圖片！已自動截取前 100 張。',
+        msg_reading: '讀取檔案中...', msg_processing: '像素分析去背中...',
+        msg_resize_err: '請輸入有效的寬度與高度',
+        msg_limit_100: '⚠️ 最多支援 100 個檔案！已自動截取前 100 個。',
         msg_batch_done: '🎉 批量處理完成！已自動逐張下載所有圖片。',
         msg_batch_zip_done: '🎉 批量處理完成！已打包為 ZIP 檔案下載。',
         msg_packing_zip: '正在打包 ZIP 壓縮檔...',
@@ -509,65 +633,67 @@
       },
       'zh-CN': {
         header_local: '100% 本地运行',
-        home_title: '可批量编辑图片的 所有工具',
-        home_desc: '你的纯前端本地图片编辑器就在这里，而且永远免费！<br>图片不会上传至任何服务器，完全保障您的隐私安全。',
+        home_title: '可批量编辑图片与文档的 所有工具',
+        home_desc: '你的纯前端本地图片与文档转换器就在这里，而且永远免费！<br>文件不会上传至任何服务器，完全保障您的隐私安全。',
         filter_all: '全部', filter_optimize: '优化', filter_edit: '编辑', filter_convert: '转换',
         ws_back: '返回所有工具',
-        batch_supported: '支持最多 100 张批量处理',
-        upload_title: '选择图片文件', upload_desc: '支持 HEIC, JPG, PNG 等',
-        upload_title_batch: '选择多张图片 (最多 100 张)', upload_desc_batch: '支持批量拖拽或选取 HEIC, JPG, PNG, WEBP',
+        batch_supported: '支持最多 100 个文件批量处理',
+        upload_title: '选择图片文件', upload_desc: '支持 HEIC, JPG, PNG, WEBP 等',
+        upload_title_batch: '选择文件 (最多 100 个)', upload_desc_batch: '支持 PDF, Word, PPT, HEIC, JPG, PNG, WEBP',
+        upload_desc_img_batch: '支持 HEIC, JPG, PNG, WEBP 等 (最多 100 张)',
         loading: '处理中...',
         settings_title: '工具设置',
         convert_label: '选择输出格式',
         convert_quality: '输出画质 (适用于 JPG/WEBP)',
-        compress_label: '图片质量 (压缩率)',
+        convert_lossless_hint: '提示：PNG / BMP 为无损格式，无法调整压缩率，高像素相机 JPG 转为 PNG 时文件体积可能会明显增大。',
+        doc_scale_label: '文档转图片分辨率 (PDF/Word/PPT)',
         compress_format_label: '压缩输出格式',
+        compress_label: '图片质量 (压缩率)',
         compress_hint: '提示：数值越小文件越小，但画质越低。批量处理时将应用至所有图片。',
-        crop_label: '批量裁剪比例 (自动居中裁剪)', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (标准横向)', crop_3_4: '3:4 (标准纵向)', crop_16_9: '16:9 (宽屏)', crop_9_16: '9:16 (手机竖屏)', crop_custom: '自定义宽高比 / 拖拽框选',
+        crop_label: '批量裁剪比例', crop_free: '自由拖拽 / 自定义比例', crop_1_1: '1:1 (正方形)', crop_4_3: '4:3 (标准横向)', crop_3_4: '3:4 (标准纵向)', crop_16_9: '16:9 (宽屏)', crop_9_16: '9:16 (手机竖屏)',
         crop_ratio_w: '比例宽', crop_ratio_h: '比例高',
         crop_anchor_label: '裁剪对齐位置', crop_anchor_center: '正中央 (默认)', crop_anchor_top: '靠上 / 靠左对齐 (保留人像头部)', crop_anchor_bottom: '靠下 / 靠右对齐',
-        crop_batch_hint: '提示：可在右侧预览框微调比例，点击下方按钮即可依设定比例批量裁剪所有图片。',
+        crop_batch_hint: '提示：点击右侧图片“预览”可检查框线，点击下方按钮即批量裁剪全部图片。',
         crop_preview_tip: '拖拽框线可自定义比例并同步至全部图片',
-        rmbg_hint: '使用纯 Canvas 色彩比对进行抠图 (无需加载 AI 模型)。', rmbg_color: '选择要去除的背景颜色', rmbg_tolerance: '色彩容差度', rmbg_strict: '严格', rmbg_loose: '宽松', rmbg_btn: '应用抠图',
+        rmbg_mode_label: '抠图方式',
+        rmbg_smart_hint: '使用 RMBG-1.4 通用模型（支持人像、宠物、商品），100% 本地运算，首次运行自动缓存。',
+        rmbg_fast_hint: '使用 MediaPipe 轻量人像模型 (~250KB)，约 1 秒极速加载，专为人像与证件照优化。',
+        rmbg_color_hint: '使用纯 Canvas 色彩容差算法，完全离线免下载模型，适合纯色背景抠图。',
+        rmbg_run_ai_btn: '开始 AI 自动抠图',
+        rmbg_color: '选择要去除的背景颜色', rmbg_tolerance: '色彩容差度', rmbg_strict: '严格', rmbg_loose: '宽松', rmbg_btn: '应用色彩抠图',
+        rmbg_bg_label: '背景替换', rmbg_bg_transparent: '透明', rmbg_bg_white: '白色', rmbg_bg_blue: '蓝色', rmbg_bg_custom: '自订',
+        rmbg_feather_label: '边缘柔和度',
+        rmbg_brush_label: '手动微调画笔', rmbg_brush_reset: '还原微调', rmbg_brush_off: '查看', rmbg_brush_keep: '＋保留', rmbg_brush_erase: '－移除', rmbg_brush_size: '画笔粗细',
+        rmbg_compare_btn: '按住对照原图',
         upscale_label: '高分辨率放大倍率', upscale_hint: '选定倍率后，点击下方按钮即可批量放大所有图片。',
         resize_mode_label: '缩放模式', resize_mode_px: '指定像素尺寸 (px)', resize_mode_pct: '按百分比缩放 (%)',
         resize_w: '宽度 (px)', resize_h: '高度 (px)', resize_aspect: '依原图比例自动计算高度', resize_pct_label: '缩放比例',
         rotate_label: '旋转角度设置', rotate_left: '左旋 90°', rotate_right: '右旋 90°', rotate_hint: '可连续点击调整角度，系统将应用至队列中的所有图片。',
         wm_label: '文字水印', wm_color: '颜色', wm_opacity: '透明度', wm_pos: '水印位置',
         wm_pos_br: '右下角', wm_pos_bl: '左下角', wm_pos_tr: '右上角', wm_pos_tl: '左上角', wm_pos_center: '正中央',
-        download_mode_label: '下载方式',
-        download_mode_direct: '直接逐张下载',
-        download_mode_zip: '打包 ZIP 下载',
-        download_btn: '处理并下载',
-        download_batch_btn: '批量处理并逐张下载',
-        download_batch_zip_btn: '批量处理并打包 ZIP 下载',
-        download_single_batch_btn: '处理并下载图片',
-        clear_all: '清空所有图片',
-        preview_empty: '尚未加载图片，请从左侧上传',
-        preview_empty_batch: '可一次选取最多 100 张图片进行批量处理',
-        batch_queue_title: '批量处理队列',
-        batch_add_more: '继续添加图片',
-        status_ready: '等待处理',
-        status_processing: '处理中...',
-        status_done: '完成',
-        status_error: '失败',
-        footer_text: 'ImgTools - 基于 HTML5 Canvas, Cropper.js 的纯本地端图片处理工具。无需服务器，无隐私风险。',
-        
-        t_convert_title: '格式转换 (支持100张)', t_convert_desc: '批量转换 HEIC, PNG, WEBP, SVG 等格式至 JPG / PNG / WEBP。',
+        download_mode_label: '下载方式', download_mode_direct: '直接逐张下载', download_mode_zip: '打包 ZIP 下载',
+        download_btn: '处理并下载', download_batch_btn: '批量处理并逐张下载', download_batch_zip_btn: '批量处理并打包 ZIP 下载', download_single_batch_btn: '处理并下载图片',
+        clear_all: '清空所有文件',
+        preview_empty: '尚未加载文件，请从左侧上传',
+        preview_empty_batch: '可一次选取最多 100 个文件进行批量处理',
+        batch_queue_title: '批量处理队列', batch_add_more: '继续添加文件',
+        status_ready: '等待处理', status_processing: '处理中...', status_done: '完成', status_error: '失败',
+        footer_text: 'ImgTools - 基于 HTML5 Canvas、Transformers.js、MediaPipe、PDF.js 与 Mammoth.js 的纯本地端处理工具。无需服务器，无隐私风险。',
+
+        t_convert_title: '格式转换 (PDF/Word/PPT)', t_convert_desc: '批量将 PDF, Word, PPT 及 HEIC, WEBP 等转换为 JPG / PNG。',
         t_compress_title: '压缩图片 (支持100张)', t_compress_desc: '批量降低文件大小同时保持视觉质量，支持直接或 ZIP 下载。',
-        t_crop_title: '裁剪图片 (支持100张)', t_crop_desc: '批量依指定长宽比或自定义比例裁剪最多 100 张图片。',
+        t_crop_title: '裁剪图片 (支持100张)', t_crop_desc: '批量依指定长宽比或自由拖拽裁剪最多 100 张图片。',
         t_resize_title: '调整大小 (支持100张)', t_resize_desc: '批量按自定义像素尺寸或百分比缩放图片。',
-        t_removebg_title: '删除背景', t_removebg_desc: '运用色彩容差算法抠图，完全支持本地直接运行。',
+        t_removebg_title: 'AI 抠图', t_removebg_desc: '智能通用 AI、极速人像 AI 与离线色彩三模式抠图，支持画笔微调。',
         t_upscale_title: '提升图片质量 (支持100张)', t_upscale_desc: '批量以 2x / 4x / 8x 高分辨率平滑放大图像。',
         t_rotate_title: '旋转图片 (支持100张)', t_rotate_desc: '批量 90 度旋转您的照片并自动保留原画质。',
         t_watermark_title: '加入水印 (支持100张)', t_watermark_desc: '批量为最多 100 张图片加上自定义文字保护标记。',
 
-        msg_crop_success: '✅ 裁剪完成！请点击“处理并下载”。',
-        msg_resize_err: '请输入有效的宽度与高度',
-        msg_rmbg_success: '✅ 抠图完成！请点击下方按钮下载 PNG (保留透明背景)。',
+        msg_rmbg_success: '✅ 抠图完成！可调整背景色、边缘柔和度或用画笔微调后下载。',
         msg_need_upload: '请先上传图片',
-        msg_reading: '读取图片中...', msg_processing: '像素分析抠图中...',
-        msg_limit_100: '⚠️ 最多支持 100 张图片！已自动截取前 100 张。',
+        msg_reading: '读取文件中...', msg_processing: '像素分析抠图中...',
+        msg_resize_err: '请输入有效的宽度与高度',
+        msg_limit_100: '⚠️ 最多支持 100 个文件！已自动截取前 100 个。',
         msg_batch_done: '🎉 批量处理完成！已自动逐张下载所有图片。',
         msg_batch_zip_done: '🎉 批量处理完成！已打包为 ZIP 文件下载。',
         msg_packing_zip: '正在打包 ZIP 压缩包...',
@@ -575,65 +701,67 @@
       },
       'en': {
         header_local: '100% Local Processing',
-        home_title: 'All Tools for Batch Image Editing',
-        home_desc: 'Your purely frontend local image editor is here, and always free!<br>Images are never uploaded to any server, fully protecting your privacy.',
+        home_title: 'All Tools for Batch Image & Document Editing',
+        home_desc: 'Your purely frontend local image & document converter is here, and always free!<br>Files are never uploaded to any server, fully protecting your privacy.',
         filter_all: 'All', filter_optimize: 'Optimize', filter_edit: 'Edit', filter_convert: 'Convert',
         ws_back: 'Back to all tools',
-        batch_supported: 'Supports up to 100 images in batch',
-        upload_title: 'Select Image File', upload_desc: 'Supports HEIC, JPG, PNG, etc.',
-        upload_title_batch: 'Select Images (Max 100)', upload_desc_batch: 'Batch select HEIC, JPG, PNG, WEBP',
+        batch_supported: 'Supports up to 100 files in batch',
+        upload_title: 'Select Image File', upload_desc: 'Supports HEIC, JPG, PNG, WEBP, etc.',
+        upload_title_batch: 'Select Files (Max 100)', upload_desc_batch: 'Supports PDF, Word, PPT, HEIC, JPG, PNG, WEBP',
+        upload_desc_img_batch: 'Supports HEIC, JPG, PNG, WEBP (Max 100)',
         loading: 'Processing...',
         settings_title: 'Tool Settings',
         convert_label: 'Select Output Format',
         convert_quality: 'Output Quality (JPG/WEBP)',
-        compress_label: 'Image Quality (Compression)',
+        convert_lossless_hint: 'Note: PNG / BMP are lossless formats. Converting high-res camera JPGs to PNG can significantly increase file size.',
+        doc_scale_label: 'Document Render Scale (PDF/Word/PPT)',
         compress_format_label: 'Output Format',
-        compress_hint: 'Note: Lower values mean smaller size but lower quality. Applied to all images in batch.',
-        crop_label: 'Batch Crop Aspect Ratio', crop_1_1: '1:1 (Square)', crop_4_3: '4:3 (Landscape)', crop_3_4: '3:4 (Portrait)', crop_16_9: '16:9 (Widescreen)', crop_9_16: '9:16 (Story/Vertical)', crop_custom: 'Custom Ratio / Drag Box',
+        compress_label: 'Image Quality (Compression)',
+        compress_hint: 'Lower values mean smaller file size but lower quality. Applied to all images in batch.',
+        crop_label: 'Batch Crop Aspect Ratio', crop_free: 'Free Drag / Custom Ratio', crop_1_1: '1:1 (Square)', crop_4_3: '4:3 (Landscape)', crop_3_4: '3:4 (Portrait)', crop_16_9: '16:9 (Widescreen)', crop_9_16: '9:16 (Vertical)',
         crop_ratio_w: 'Ratio W', crop_ratio_h: 'Ratio H',
-        crop_anchor_label: 'Crop Alignment', crop_anchor_center: 'Center (Default)', crop_anchor_top: 'Top / Left Align (Keep Heads)', crop_anchor_bottom: 'Bottom / Right Align',
-        crop_batch_hint: 'Tip: Adjust the preview box on the right, then click below to batch crop all queued images.',
+        crop_anchor_label: 'Crop Alignment', crop_anchor_center: 'Center (Default)', crop_anchor_top: 'Top / Left Align', crop_anchor_bottom: 'Bottom / Right Align',
+        crop_batch_hint: 'Tip: Click "Preview" on any image to inspect crop area, then click below to crop all queued images.',
         crop_preview_tip: 'Drag box to sync custom aspect ratio to all images',
-        rmbg_hint: 'Uses pure Canvas color matching for background removal (No AI model needed).', rmbg_color: 'Select background color to remove', rmbg_tolerance: 'Color Tolerance', rmbg_strict: 'Strict', rmbg_loose: 'Loose', rmbg_btn: 'Apply Background Removal',
-        upscale_label: 'Upscale Multiplier', upscale_hint: 'Select a multiplier and click the button below to batch upscale all images.',
+        rmbg_mode_label: 'Removal Mode',
+        rmbg_smart_hint: 'Uses RMBG-1.4 universal AI model (portraits, pets, objects). 100% local, cached after first download.',
+        rmbg_fast_hint: 'Uses MediaPipe Selfie Segmenter (~250KB). Loads in ~1s, optimized for portraits.',
+        rmbg_color_hint: 'Pure Canvas RGB color matching. Works 100% offline with zero model downloads.',
+        rmbg_run_ai_btn: 'Run AI Auto Remove',
+        rmbg_color: 'Background color to remove', rmbg_tolerance: 'Color Tolerance', rmbg_strict: 'Strict', rmbg_loose: 'Loose', rmbg_btn: 'Apply Color Removal',
+        rmbg_bg_label: 'Background', rmbg_bg_transparent: 'None', rmbg_bg_white: 'White', rmbg_bg_blue: 'Blue', rmbg_bg_custom: 'Custom',
+        rmbg_feather_label: 'Edge Softness',
+        rmbg_brush_label: 'Manual Refine Brush', rmbg_brush_reset: 'Reset Edits', rmbg_brush_off: 'View', rmbg_brush_keep: '+ Keep', rmbg_brush_erase: '- Erase', rmbg_brush_size: 'Brush Size',
+        rmbg_compare_btn: 'Hold to Compare Original',
+        upscale_label: 'Upscale Multiplier', upscale_hint: 'Select a multiplier and click below to batch upscale all images.',
         resize_mode_label: 'Resize Mode', resize_mode_px: 'Fixed Pixels (px)', resize_mode_pct: 'Scale Percentage (%)',
         resize_w: 'Width (px)', resize_h: 'Height (px)', resize_aspect: 'Auto-calculate height by aspect ratio', resize_pct_label: 'Scale Percentage',
         rotate_label: 'Rotation Angle', rotate_left: 'Rotate Left 90°', rotate_right: 'Rotate Right 90°', rotate_hint: 'Click repeatedly to adjust angle; applies to all queued images.',
         wm_label: 'Text Watermark', wm_color: 'Color', wm_opacity: 'Opacity', wm_pos: 'Position',
         wm_pos_br: 'Bottom Right', wm_pos_bl: 'Bottom Left', wm_pos_tr: 'Top Right', wm_pos_tl: 'Top Left', wm_pos_center: 'Center',
-        download_mode_label: 'Download Method',
-        download_mode_direct: 'Direct Files',
-        download_mode_zip: 'ZIP Archive',
-        download_btn: 'Process & Download',
-        download_batch_btn: 'Batch Process & Download Files',
-        download_batch_zip_btn: 'Batch Process & Download ZIP',
-        download_single_batch_btn: 'Process & Download Image',
-        clear_all: 'Clear All Images',
-        preview_empty: 'No image loaded, please upload from the left',
-        preview_empty_batch: 'Select up to 100 images at once for batch processing',
-        batch_queue_title: 'Batch Queue',
-        batch_add_more: 'Add More Images',
-        status_ready: 'Ready',
-        status_processing: 'Processing...',
-        status_done: 'Done',
-        status_error: 'Error',
-        footer_text: 'ImgTools - A pure local image processing tool based on HTML5 Canvas & Cropper.js. No servers, no privacy risks.',
-        
-        t_convert_title: 'Convert Format (Up to 100)', t_convert_desc: 'Batch convert HEIC, PNG, WEBP, SVG formats to JPG / PNG / WEBP.',
-        t_compress_title: 'Compress Image (Up to 100)', t_compress_desc: 'Batch reduce file size while maintaining quality; direct or ZIP download.',
+        download_mode_label: 'Download Method', download_mode_direct: 'Direct Files', download_mode_zip: 'ZIP Archive',
+        download_btn: 'Process & Download', download_batch_btn: 'Batch Process & Download Files', download_batch_zip_btn: 'Batch Process & Download ZIP', download_single_batch_btn: 'Process & Download Image',
+        clear_all: 'Clear All Files',
+        preview_empty: 'No file loaded, please upload from the left',
+        preview_empty_batch: 'Select up to 100 files for batch processing',
+        batch_queue_title: 'Batch Queue', batch_add_more: 'Add More Files',
+        status_ready: 'Ready', status_processing: 'Processing...', status_done: 'Done', status_error: 'Error',
+        footer_text: 'ImgTools - Pure local processing with HTML5 Canvas, Transformers.js, MediaPipe, PDF.js & Mammoth.js.',
+
+        t_convert_title: 'Convert Format (PDF/Word/PPT)', t_convert_desc: 'Batch convert PDF, Word, PPT, HEIC, PNG, WEBP to JPG / PNG.',
+        t_compress_title: 'Compress Image (Up to 100)', t_compress_desc: 'Batch reduce file size while maintaining visual quality.',
         t_crop_title: 'Crop Image (Up to 100)', t_crop_desc: 'Batch crop up to 100 images by preset or custom aspect ratio.',
         t_resize_title: 'Resize (Up to 100)', t_resize_desc: 'Batch scale by custom pixel dimensions or percentage.',
-        t_removebg_title: 'Remove Background', t_removebg_desc: 'Uses color tolerance algorithms to remove backgrounds entirely locally.',
+        t_removebg_title: 'AI Remove BG', t_removebg_desc: '3-mode local AI removal (Universal, Fast Portrait, Offline Color) with brush refine.',
         t_upscale_title: 'Upscale Quality (Up to 100)', t_upscale_desc: 'Batch enlarge images at 2x / 4x / 8x high resolution.',
         t_rotate_title: 'Rotate Image (Up to 100)', t_rotate_desc: 'Batch rotate your photos by 90 degrees while preserving quality.',
         t_watermark_title: 'Add Watermark (Up to 100)', t_watermark_desc: 'Batch add custom text protection marks to up to 100 images.',
 
-        msg_crop_success: '✅ Crop complete! Please click "Process & Download".',
-        msg_resize_err: 'Please enter valid width and height',
-        msg_rmbg_success: '✅ Background removed! Click download below for PNG (keeps transparency).',
+        msg_rmbg_success: '✅ Background removed! Customize background, softness, or refine with brush.',
         msg_need_upload: 'Please upload an image first',
-        msg_reading: 'Reading image...', msg_processing: 'Analyzing pixels for background removal...',
-        msg_limit_100: '⚠️ Maximum 100 images supported! Kept the first 100.',
+        msg_reading: 'Reading file...', msg_processing: 'Analyzing pixels for background removal...',
+        msg_resize_err: 'Please enter valid width and height',
+        msg_limit_100: '⚠️ Maximum 100 files supported! Kept the first 100.',
         msg_batch_done: '🎉 Batch processing complete! Downloading all images.',
         msg_batch_zip_done: '🎉 Batch processing complete! Downloaded as ZIP archive.',
         msg_packing_zip: 'Creating ZIP archive...',
@@ -641,15 +769,22 @@
       }
     };
 
-    let currentLang = localStorage.getItem('imgtools_lang') || 'zh-TW';
-    
-    function t(key) {
-      return i18n[currentLang][key] || key;
+    // 設定 PDF.js Worker
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
-    // 自訂 Toast 提示 (取代 alert())
+    let currentLang = localStorage.getItem('imgtools_lang') || 'zh-TW';
+    if (!i18n[currentLang]) currentLang = 'zh-TW';
+    
+    function t(key) {
+      return (i18n[currentLang] && i18n[currentLang][key]) || key;
+    }
+
+    // 自訂 Toast 通知（全面取代 alert()）
     function showToast(message, type = 'info') {
       const container = document.getElementById('toast-container');
+      if (!container) return;
       const toast = document.createElement('div');
       const bgColors = {
         info: 'bg-slate-800 text-white border-slate-700',
@@ -658,7 +793,7 @@
         error: 'bg-rose-600 text-white border-rose-500'
       };
       toast.className = `toast-enter pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-sm font-medium flex items-center space-x-2 max-w-sm ${bgColors[type] || bgColors.info}`;
-      toast.innerHTML = `<span>${message}</span>`;
+      toast.textContent = message;
       container.appendChild(toast);
 
       setTimeout(() => {
@@ -666,7 +801,7 @@
         toast.style.transform = 'translateY(10px)';
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
-      }, 3500);
+      }, 4000);
     }
 
     function formatBytes(bytes, decimals = 1) {
@@ -678,56 +813,52 @@
       return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
     }
 
-    function applyTranslations() {
-      document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (i18n[currentLang][key]) {
-          if(i18n[currentLang][key].includes('<br>')) {
-            el.innerHTML = i18n[currentLang][key];
-          } else {
-            el.textContent = i18n[currentLang][key];
-          }
-        }
-      });
-      document.getElementById('html-root').lang = currentLang;
-      renderGrid(window.currentFilter || 'all');
-      if (appState.activeTool) {
-        document.getElementById('ws-title').textContent = t('t_' + appState.activeTool.id + '_title');
-        document.getElementById('ws-desc').textContent = t('t_' + appState.activeTool.id + '_desc');
-        updateWorkspaceModeUI();
-      }
-    }
-
-    // --- 2. 工具資料與狀態定義 ---
+    // =========================================================================
+    // 2. 工具資料與全域應用程式狀態
+    // =========================================================================
     const MAX_BATCH_FILES = 100;
     const BATCH_TOOLS = ['convert', 'compress', 'crop', 'resize', 'upscale', 'rotate', 'watermark'];
 
     const toolsData = [
-      { id: 'convert', category: 'convert', batch: true, color: 'bg-yellow-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>' },
+      { id: 'convert', category: 'convert', batch: true, color: 'bg-yellow-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>' },
       { id: 'compress', category: 'optimize', batch: true, color: 'bg-green-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>' },
       { id: 'crop', category: 'edit', batch: true, color: 'bg-blue-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"></path>' },
-      { id: 'resize', category: 'edit', batch: true, color: 'bg-blue-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>' },
-      { id: 'removebg', category: 'optimize', batch: false, color: 'bg-emerald-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>' },
-      { id: 'upscale', category: 'optimize', batch: true, color: 'bg-emerald-400', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>' },
+      { id: 'resize', category: 'edit', batch: true, color: 'bg-sky-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>' },
+      { id: 'removebg', category: 'optimize', batch: false, color: 'bg-emerald-600', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>' },
+      { id: 'upscale', category: 'optimize', batch: true, color: 'bg-teal-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path>' },
       { id: 'rotate', category: 'edit', batch: true, color: 'bg-cyan-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>' },
       { id: 'watermark', category: 'edit', batch: true, color: 'bg-indigo-500', icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>' }
     ];
 
-    window.appState = { 
-      originalImage: null, 
-      activeTool: null, 
-      cropperInstance: null,
+    window.appState = {
+      originalImage: null,
+      activeTool: null,
       batchCropperInstance: null,
       previewCropItemId: null,
       batchCropRatio: 1,
-      batchFiles: [], // { id, file, name, originalSize, newSize, dimensionsText, status, thumbUrl, resultBlob, outName }
+      batchFiles: [],
       isProcessingBatch: false,
       batchDownloadMode: 'direct', // 'direct' | 'zip'
       batchRotateDeg: 0,
-      batchUpscaleFactor: 2
+      batchUpscaleFactor: 2,
+      // AI 去背專屬狀態
+      rmbgMode: 'ai_smart', // 'ai_smart' | 'ai_fast' | 'color'
+      rmbgBgColor: 'transparent',
+      rmbgFeather: 10,
+      rmbgBrushTool: 'none', // 'none' | 'keep' | 'erase'
+      rmbgBaseMaskCanvas: null,
+      rmbgMaskCanvas: null,
+      rmbgIsComparing: false,
+      rmbgIsRunning: false,
+      // 快取已載入的 AI 模型，避免重複下載
+      rmbgSmartCache: null,   // { model, processor, RawImage }
+      rmbgFastSegmenter: null // MediaPipe ImageSegmenter instance
     };
     window.currentFilter = 'all';
 
+    // =========================================================================
+    // 3. 初始化與事件綁定
+    // =========================================================================
     document.addEventListener('DOMContentLoaded', () => {
       try {
         const langSwitcher = document.getElementById('lang-switcher');
@@ -741,63 +872,100 @@
         const canvas = document.getElementById('main-canvas');
         const ctx = canvas ? canvas.getContext('2d') : null;
 
+        // 翻譯套用函式
+        window.applyTranslations = function() {
+          document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (i18n[currentLang][key]) {
+              if (i18n[currentLang][key].includes('<br>')) {
+                el.innerHTML = i18n[currentLang][key];
+              } else {
+                el.textContent = i18n[currentLang][key];
+              }
+            }
+          });
+          document.getElementById('html-root').lang = currentLang;
+          renderGrid(window.currentFilter || 'all');
+          if (appState.activeTool) {
+            document.getElementById('ws-title').textContent = t('t_' + appState.activeTool.id + '_title');
+            document.getElementById('ws-desc').textContent = t('t_' + appState.activeTool.id + '_desc');
+            updateWorkspaceModeUI();
+            if (appState.activeTool.id === 'removebg') {
+              setRmbgMode(appState.rmbgMode);
+            }
+          }
+        };
+
+        // 渲染首頁工具卡片網格
         window.renderGrid = function(filter = 'all') {
           window.currentFilter = filter;
           const gridEl = document.getElementById('tools-grid');
-          if(!gridEl) return;
+          if (!gridEl) return;
           gridEl.innerHTML = '';
           toolsData.forEach(tool => {
             if (filter !== 'all' && tool.category !== filter) return;
             const card = document.createElement('div');
             card.className = 'tool-card bg-white rounded-2xl p-5 border border-slate-200 cursor-pointer relative flex flex-col';
             card.onclick = () => openWorkspace(tool.id);
-            
-            const batchTag = tool.batch 
-              ? `<span class="absolute top-4 right-4 px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 text-[10px] font-bold rounded-full">100張批量</span>` 
-              : '';
+
+            const batchTag = tool.batch
+              ? `<span class="absolute top-4 right-4 px-2 py-0.5 bg-blue-50 text-blue-600 border border-blue-200 text-[10px] font-bold rounded-full">100張批量</span>`
+              : `<span class="absolute top-4 right-4 px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold rounded-full">本機 AI</span>`;
 
             card.innerHTML = `
               ${batchTag}
               <div class="w-12 h-12 rounded-xl ${tool.color} flex items-center justify-center text-white mb-4 shadow-sm">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${tool.icon}</svg>
               </div>
-              <h3 class="font-bold text-slate-800 text-lg mb-1">${t('t_' + tool.id + '_title')}</h3>
+              <h3 class="font-bold text-slate-800 text-base mb-1">${t('t_' + tool.id + '_title')}</h3>
               <p class="text-xs text-slate-500 leading-relaxed flex-grow">${t('t_' + tool.id + '_desc')}</p>
             `;
             gridEl.appendChild(card);
           });
-          
+
           document.querySelectorAll('.filter-btn').forEach(b => {
-            b.classList.remove('bg-slate-800', 'text-white');
+            b.classList.remove('bg-slate-800', 'text-white', 'shadow-md');
             b.classList.add('bg-white', 'text-slate-600');
           });
           const activeBtn = document.querySelector(`.filter-btn[data-filter="${filter}"]`);
-          if(activeBtn) {
-            activeBtn.classList.add('bg-slate-800', 'text-white');
+          if (activeBtn) {
+            activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-md');
             activeBtn.classList.remove('bg-white', 'text-slate-600');
           }
         };
 
+        // 返回首頁
         window.goHome = function() {
-          if (appState.isProcessingBatch) return;
+          if (appState.isProcessingBatch || appState.rmbgIsRunning) return;
           document.getElementById('view-workspace').classList.add('hide');
           document.getElementById('view-home').classList.remove('hide');
           resetWorkspace();
         };
+        document.getElementById('btn-go-home').addEventListener('click', goHome);
+        document.getElementById('btn-back-home').addEventListener('click', goHome);
 
+        // 更新工作區介面文字與多選屬性
         window.updateWorkspaceModeUI = function() {
           if (!appState.activeTool) return;
-          const isBatch = BATCH_TOOLS.includes(appState.activeTool.id);
+          const toolId = appState.activeTool.id;
+          const isBatch = BATCH_TOOLS.includes(toolId);
           const fileInput = document.getElementById('file-input');
-          
+          const batchAddInput = document.getElementById('batch-add-input');
+
+          const acceptStr = toolId === 'convert'
+            ? 'image/*,.heic,.heif,.pdf,.docx,.doc,.pptx,.ppt'
+            : 'image/*,.heic,.heif';
+          fileInput.setAttribute('accept', acceptStr);
+          if (batchAddInput) batchAddInput.setAttribute('accept', acceptStr);
+
           if (isBatch) {
             fileInput.setAttribute('multiple', 'multiple');
             document.getElementById('batch-badge').classList.remove('hide');
             document.getElementById('batch-download-mode-box').classList.remove('hide');
             document.getElementById('upload-title-text').textContent = t('upload_title_batch');
-            document.getElementById('upload-desc-text').textContent = t('upload_desc_batch');
+            document.getElementById('upload-desc-text').textContent = toolId === 'convert' ? t('upload_desc_batch') : t('upload_desc_img_batch');
             document.getElementById('placeholder-sub-text').classList.remove('hide');
-            
+
             if (appState.batchDownloadMode === 'zip') {
               document.getElementById('btn-download-text').textContent = t('download_batch_zip_btn');
             } else if (appState.batchFiles.length === 1) {
@@ -816,14 +984,14 @@
           }
         };
 
+        // 切換下載方式 (直接逐張 / 打包 ZIP)
         window.setDownloadMode = function(mode) {
           appState.batchDownloadMode = mode;
           const btnDirect = document.getElementById('btn-dl-mode-direct');
           const btnZip = document.getElementById('btn-dl-mode-zip');
-          
           const activeClass = 'py-2 px-2.5 rounded-xl text-xs font-bold border-2 border-blue-600 bg-blue-50 text-blue-700 transition flex items-center justify-center space-x-1';
           const inactiveClass = 'py-2 px-2.5 rounded-xl text-xs font-semibold border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition flex items-center justify-center space-x-1';
-          
+
           if (mode === 'zip') {
             btnZip.className = activeClass;
             btnDirect.className = inactiveClass;
@@ -834,32 +1002,35 @@
           updateWorkspaceModeUI();
         };
 
+        // 開啟指定工具工作區
         window.openWorkspace = function(toolId) {
           const tool = toolsData.find(t => t.id === toolId);
-          if(!tool) return;
+          if (!tool) return;
           resetWorkspace();
           appState.activeTool = tool;
-          
+
           document.getElementById('view-home').classList.add('hide');
           document.getElementById('view-workspace').classList.remove('hide');
-          
+
           document.getElementById('ws-title').textContent = t('t_' + tool.id + '_title');
           document.getElementById('ws-desc').textContent = t('t_' + tool.id + '_desc');
-          
+
           const iconEl = document.getElementById('ws-icon');
           iconEl.className = `w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0 ${tool.color}`;
           iconEl.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">${tool.icon}</svg>`;
-          
+
           document.querySelectorAll('#settings-panel > div[id^="setting-"]').forEach(el => el.classList.add('hide'));
           const targetSetting = document.getElementById(`setting-${tool.id}`);
-          if(targetSetting) targetSetting.classList.remove('hide');
+          if (targetSetting) targetSetting.classList.remove('hide');
 
+          if (tool.id === 'convert') onConvertFormatChange();
+          if (tool.id === 'removebg') setRmbgMode(appState.rmbgMode);
           updateWorkspaceModeUI();
         };
 
+        // 重置工作區狀態
         function resetWorkspace() {
           appState.originalImage = null;
-          // 釋放 ObjectURL 避免記憶體洩漏
           appState.batchFiles.forEach(item => {
             if (item.thumbUrl) URL.revokeObjectURL(item.thumbUrl);
           });
@@ -872,17 +1043,30 @@
 
           const rotBadge = document.getElementById('rotate-angle-badge');
           if (rotBadge) rotBadge.textContent = '0°';
-          if (typeof selectUpscaleFactor === 'function') selectUpscaleFactor(2);
+          selectUpscaleFactor(2);
 
           const cropRatioSel = document.getElementById('crop-ratio');
           if (cropRatioSel) cropRatioSel.value = '1';
-          const cropCustomBox = document.getElementById('crop-custom-box');
-          if (cropCustomBox) cropCustomBox.classList.add('hide');
-          const batchCropBox = document.getElementById('batch-crop-preview-box');
-          if (batchCropBox) batchCropBox.classList.add('hide');
+          document.getElementById('crop-custom-box').classList.add('hide');
+          document.getElementById('batch-crop-preview-box').classList.add('hide');
+
+          // 重置 AI 去背狀態
+          appState.rmbgBaseMaskCanvas = null;
+          appState.rmbgMaskCanvas = null;
+          appState.rmbgBgColor = 'transparent';
+          appState.rmbgFeather = 10;
+          appState.rmbgBrushTool = 'none';
+          appState.rmbgIsComparing = false;
+          appState.rmbgIsRunning = false;
+          document.getElementById('rmbg-resize-notice').classList.add('hide');
+          document.getElementById('ai-rmbg-progress-box').classList.add('hide');
+          document.getElementById('ai-rmbg-error-box').classList.add('hide');
+          document.getElementById('rmbg-feather-slider').value = '10';
+          document.getElementById('rmbg-feather-val').textContent = '10';
+          setRmbgBrushTool('none');
+          setRmbgBg('transparent');
 
           document.getElementById('single-canvas-wrapper').classList.add('hide');
-          document.getElementById('cropper-container').classList.add('hide');
           document.getElementById('batch-list-view').classList.add('hide');
           document.getElementById('preview-placeholder').classList.remove('hide');
           document.getElementById('settings-panel').classList.add('opacity-50', 'pointer-events-none');
@@ -890,12 +1074,8 @@
           document.getElementById('btn-clear-batch').classList.add('hide');
           document.getElementById('batch-progress-container').classList.add('hide');
           document.getElementById('file-input').value = '';
-          
-          if(appState.cropperInstance) { 
-            appState.cropperInstance.destroy(); 
-            appState.cropperInstance = null; 
-          }
-          if(appState.batchCropperInstance) {
+
+          if (appState.batchCropperInstance) {
             appState.batchCropperInstance.destroy();
             appState.batchCropperInstance = null;
           }
@@ -907,11 +1087,11 @@
           updateWorkspaceModeUI();
         };
 
-        function setLoading(isLoading, textKey = "loading") {
+        function setLoading(isLoading, textKey = 'loading') {
           const uploadContent = document.getElementById('upload-content');
           const uploadLoading = document.getElementById('upload-loading');
           document.getElementById('loading-text').textContent = t(textKey);
-          
+
           if (isLoading) {
             uploadContent.classList.add('hide');
             uploadLoading.classList.remove('hide');
@@ -923,97 +1103,253 @@
           }
         }
 
-        function initCanvas(img, width = img.width, height = img.height) {
-          canvas.width = width;
-          canvas.height = height;
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, width, height);
-        }
-
-        function setupSingleToolUI() {
-          if (!appState.originalImage) return;
-          if (appState.cropperInstance) {
-            appState.cropperInstance.destroy();
-            appState.cropperInstance = null;
-          }
-
-          if (appState.activeTool.id === 'crop') {
-            document.getElementById('single-canvas-wrapper').classList.add('hide');
-            const cropContainer = document.getElementById('cropper-container');
-            const cropImg = document.getElementById('crop-image');
-            
-            cropContainer.classList.remove('hide');
-            cropImg.src = appState.originalImage.src;
-            
-            appState.cropperInstance = new Cropper(cropImg, {
-              viewMode: 2,
-              background: false,
-              autoCropArea: 0.8
-            });
+        // =========================================================================
+        // 4. 各項工具設定互動事件
+        // =========================================================================
+        // 格式轉換：選擇 PNG / BMP 時自動隱藏畫質滑桿並顯示提示
+        window.onConvertFormatChange = function() {
+          const fmt = document.getElementById('format-select').value;
+          const qBox = document.getElementById('convert-quality-box');
+          const hint = document.getElementById('convert-lossless-hint');
+          if (fmt === 'image/png' || fmt === 'image/bmp') {
+            qBox.classList.add('hide');
+            hint.classList.remove('hide');
           } else {
-            document.getElementById('cropper-container').classList.add('hide');
-            document.getElementById('single-canvas-wrapper').classList.remove('hide');
-            initCanvas(appState.originalImage);
-
-            if (appState.activeTool.id === 'resize') {
-              document.getElementById('resize-w').value = appState.originalImage.width;
-              document.getElementById('resize-h').value = appState.originalImage.height;
-            }
+            qBox.classList.remove('hide');
+            hint.classList.add('hide');
           }
-        }
+        };
 
-        // --- 批量檔案新增與渲染邏輯 ---
+        document.getElementById('convert-quality-slider').addEventListener('input', (e) => {
+          document.getElementById('convert-quality-val').textContent = Math.round(e.target.value * 100) + '%';
+        });
+
+        document.getElementById('compress-slider').addEventListener('input', (e) => {
+          document.getElementById('compress-val').textContent = Math.round(e.target.value * 100) + '%';
+        });
+
+        document.getElementById('resize-pct-slider').addEventListener('input', (e) => {
+          document.getElementById('resize-pct-val').textContent = e.target.value + '%';
+        });
+
+        // 調整大小模式切換
+        window.toggleResizeMode = function(mode) {
+          const pxBox = document.getElementById('resize-px-box');
+          const pctBox = document.getElementById('resize-pct-box');
+          if (mode === 'percent') {
+            pxBox.classList.add('hide');
+            pctBox.classList.remove('hide');
+          } else {
+            pctBox.classList.add('hide');
+            pxBox.classList.remove('hide');
+          }
+        };
+
+        // 提升圖片質量倍率切換
+        window.selectUpscaleFactor = function(factor) {
+          appState.batchUpscaleFactor = factor;
+          const badge = document.getElementById('upscale-badge');
+          if (badge) badge.textContent = factor + 'x';
+          [2, 4, 8].forEach(f => {
+            const btn = document.getElementById(`btn-upscale-${f}`);
+            if (!btn) return;
+            if (f === factor) {
+              btn.className = 'upscale-opt py-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-700 rounded-xl text-sm font-bold transition';
+            } else {
+              btn.className = 'upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition';
+            }
+          });
+        };
+
+        // 批量旋轉角度累計
+        window.setBatchRotate = function(delta) {
+          appState.batchRotateDeg = (appState.batchRotateDeg + delta) % 360;
+          const badge = document.getElementById('rotate-angle-badge');
+          if (badge) badge.textContent = appState.batchRotateDeg + '°';
+        };
+
+        // 批量裁切比例變更
+        window.changeBatchCropRatio = function(val) {
+          const customBox = document.getElementById('crop-custom-box');
+          if (val === 'free') {
+            customBox.classList.remove('hide');
+            updateCustomCropRatio();
+            if (appState.batchCropperInstance) appState.batchCropperInstance.setAspectRatio(NaN);
+          } else {
+            customBox.classList.add('hide');
+            const num = parseFloat(val);
+            appState.batchCropRatio = num;
+            if (appState.batchCropperInstance) appState.batchCropperInstance.setAspectRatio(num);
+          }
+        };
+
+        window.updateCustomCropRatio = function() {
+          const w = parseFloat(document.getElementById('crop-custom-w').value) || 16;
+          const h = parseFloat(document.getElementById('crop-custom-h').value) || 9;
+          if (w > 0 && h > 0) {
+            appState.batchCropRatio = w / h;
+          }
+        };
+
+        // =========================================================================
+        // 5. 批量檔案佇列管理與預覽
+        // =========================================================================
         function addFilesToBatch(fileList) {
-          const files = Array.from(fileList);
-          if (!files.length) return;
-
-          const remainingSlots = MAX_BATCH_FILES - appState.batchFiles.length;
-          if (remainingSlots <= 0) {
+          const incoming = Array.from(fileList);
+          const remaining = MAX_BATCH_FILES - appState.batchFiles.length;
+          if (remaining <= 0) {
             showToast(t('msg_limit_100'), 'warning');
             return;
           }
 
-          let filesToAdd = files;
-          if (files.length > remainingSlots) {
-            filesToAdd = files.slice(0, remainingSlots);
+          let filesToAdd = incoming;
+          if (incoming.length > remaining) {
+            filesToAdd = incoming.slice(0, remaining);
             showToast(t('msg_limit_100'), 'warning');
           }
 
-          filesToAdd.forEach((file, idx) => {
-            const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
-            const thumbUrl = isHeic ? '' : URL.createObjectURL(file);
+          filesToAdd.forEach(file => {
+            const lower = file.name.toLowerCase();
+            const isPdf = file.type === 'application/pdf' || lower.endsWith('.pdf');
+            const isWord = lower.endsWith('.docx') || lower.endsWith('.doc');
+            const isPpt = lower.endsWith('.pptx') || lower.endsWith('.ppt');
+            const isHeic = file.type === 'image/heic' || file.type === 'image/heif' || lower.endsWith('.heic') || lower.endsWith('.heif');
+
+            let docType = '';
+            if (isPdf) docType = 'PDF';
+            else if (isWord) docType = 'WORD';
+            else if (isPpt) docType = 'PPT';
+            else if (isHeic) docType = 'HEIC';
+
+            const canThumb = !isPdf && !isWord && !isPpt && !isHeic && file.type.startsWith('image/');
+            const thumbUrl = canThumb ? URL.createObjectURL(file) : null;
+
             appState.batchFiles.push({
-              id: Date.now() + '_' + idx + '_' + Math.random().toString(36).substr(2, 5),
-              file: file,
+              id: 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
+              file,
               name: file.name,
               originalSize: file.size,
-              newSize: null,
+              newSize: 0,
               dimensionsText: '',
-              status: 'ready', // ready, processing, done, error
-              thumbUrl: thumbUrl,
-              isHeic: isHeic,
+              status: 'ready',
+              thumbUrl,
+              docType,
+              isPdf,
+              isWord,
+              isPpt,
               resultBlob: null,
+              resultPages: [],
               outName: ''
             });
           });
 
-          renderBatchList();
-          document.getElementById('preview-placeholder').classList.add('hide');
-          document.getElementById('batch-list-view').classList.remove('hide');
-          document.getElementById('settings-panel').classList.remove('opacity-50', 'pointer-events-none');
-          document.getElementById('btn-download').disabled = false;
-          document.getElementById('btn-clear-batch').classList.remove('hide');
-          updateWorkspaceModeUI();
+          if (appState.batchFiles.length > 0) {
+            document.getElementById('preview-placeholder').classList.add('hide');
+            document.getElementById('single-canvas-wrapper').classList.add('hide');
+            document.getElementById('batch-list-view').classList.remove('hide');
+            document.getElementById('settings-panel').classList.remove('opacity-50', 'pointer-events-none');
+            document.getElementById('btn-download').disabled = false;
+            document.getElementById('btn-clear-batch').classList.remove('hide');
 
-          if (appState.activeTool && appState.activeTool.id === 'crop') {
-            const firstDisplayable = appState.batchFiles.find(item => item.thumbUrl);
-            if (firstDisplayable && !appState.previewCropItemId) {
-              previewBatchCropItem(firstDisplayable.id);
+            // 若為裁切工具且尚未預覽任何圖片，自動預覽第一張可用圖片
+            if (appState.activeTool.id === 'crop' && !appState.previewCropItemId) {
+              const firstImg = appState.batchFiles.find(item => item.thumbUrl);
+              if (firstImg) previewBatchCropItem(firstImg.id);
             }
+
+            renderBatchList();
+            updateWorkspaceModeUI();
           }
         }
 
-        // --- 批量裁切預覽與比例同步 ---
+        // 監聽「繼續新增檔案」
+        document.getElementById('batch-add-input').addEventListener('change', (e) => {
+          if (e.target.files && e.target.files.length > 0) {
+            addFilesToBatch(e.target.files);
+            e.target.value = '';
+          }
+        });
+
+        // 監聽主檔案上傳區
+        document.getElementById('file-input').addEventListener('change', async (e) => {
+          if (!e.target.files || e.target.files.length === 0) return;
+
+          if (BATCH_TOOLS.includes(appState.activeTool.id)) {
+            addFilesToBatch(e.target.files);
+            e.target.value = '';
+            return;
+          }
+
+          // 單圖模式（AI 去背）
+          const file = e.target.files[0];
+          setLoading(true, 'msg_reading');
+          document.getElementById('ai-rmbg-error-box').classList.add('hide');
+
+          try {
+            let imageBlob = file;
+            const fileName = file.name.toLowerCase();
+            if (file.type === 'image/heic' || file.type === 'image/heif' || fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+              if (typeof heic2any !== 'undefined') {
+                const convertedBlob = await heic2any({ blob: file, toType: 'image/png' });
+                imageBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+              }
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const img = new Image();
+              img.onload = () => {
+                // 大圖保護：長邊超過 2560px 自動縮小並顯示提示橫幅
+                const MAX_AI_DIM = 2560;
+                const resizeNotice = document.getElementById('rmbg-resize-notice');
+                if (img.width > MAX_AI_DIM || img.height > MAX_AI_DIM) {
+                  const ratio = Math.min(MAX_AI_DIM / img.width, MAX_AI_DIM / img.height);
+                  const newW = Math.round(img.width * ratio);
+                  const newH = Math.round(img.height * ratio);
+                  const tmpCanvas = document.createElement('canvas');
+                  tmpCanvas.width = newW;
+                  tmpCanvas.height = newH;
+                  tmpCanvas.getContext('2d').drawImage(img, 0, 0, newW, newH);
+                  const resizedImg = new Image();
+                  resizedImg.onload = () => {
+                    appState.originalImage = resizedImg;
+                    resizeNotice.textContent = `圖片超過瀏覽器最佳處理大小，已自動縮小為 ${newW}×${newH}`;
+                    resizeNotice.classList.remove('hide');
+                    finishSingleImageLoad();
+                  };
+                  resizedImg.src = tmpCanvas.toDataURL('image/png');
+                } else {
+                  resizeNotice.classList.add('hide');
+                  appState.originalImage = img;
+                  finishSingleImageLoad();
+                }
+              };
+              img.onerror = () => {
+                showToast('無法解析該圖片格式', 'error');
+                setLoading(false);
+              };
+              img.src = event.target.result;
+            };
+            reader.readAsDataURL(imageBlob);
+          } catch (error) {
+            console.error('File Load Error:', error);
+            showToast(t('msg_reading') + ' ' + (error.message || ''), 'error');
+            setLoading(false);
+          }
+        });
+
+        function finishSingleImageLoad() {
+          document.getElementById('preview-placeholder').classList.add('hide');
+          document.getElementById('batch-list-view').classList.add('hide');
+          document.getElementById('single-canvas-wrapper').classList.remove('hide');
+          document.getElementById('btn-download').disabled = false;
+          appState.rmbgBaseMaskCanvas = null;
+          appState.rmbgMaskCanvas = null;
+          renderRmbgComposite();
+          setLoading(false);
+        }
+
+        // 批量裁切即時預覽
         window.previewBatchCropItem = function(id) {
           const item = appState.batchFiles.find(i => i.id === id);
           if (!item || !item.thumbUrl) return;
@@ -1021,9 +1357,8 @@
 
           const previewBox = document.getElementById('batch-crop-preview-box');
           const previewImg = document.getElementById('batch-crop-image');
-          const fileNameEl = document.getElementById('crop-preview-filename');
+          document.getElementById('crop-preview-filename').textContent = item.name;
           previewBox.classList.remove('hide');
-          fileNameEl.textContent = item.name;
 
           if (appState.batchCropperInstance) {
             appState.batchCropperInstance.destroy();
@@ -1032,7 +1367,7 @@
 
           previewImg.src = item.thumbUrl;
           const ratioVal = document.getElementById('crop-ratio').value;
-          const aspect = ratioVal === 'custom' ? NaN : parseFloat(ratioVal);
+          const aspect = ratioVal === 'free' ? NaN : parseFloat(ratioVal);
 
           appState.batchCropperInstance = new Cropper(previewImg, {
             viewMode: 1,
@@ -1040,7 +1375,7 @@
             autoCropArea: 0.85,
             aspectRatio: aspect,
             cropend() {
-              if (document.getElementById('crop-ratio').value === 'custom' && appState.batchCropperInstance) {
+              if (document.getElementById('crop-ratio').value === 'free' && appState.batchCropperInstance) {
                 const data = appState.batchCropperInstance.getData(true);
                 if (data.width > 0 && data.height > 0) {
                   document.getElementById('crop-custom-w').value = data.width;
@@ -1075,7 +1410,21 @@
 
         window.downloadSingleBatchItem = function(id) {
           const item = appState.batchFiles.find(i => i.id === id);
-          if (!item || !item.resultBlob) return;
+          if (!item) return;
+          if (item.resultPages && item.resultPages.length > 0) {
+            item.resultPages.forEach((p, idx) => {
+              setTimeout(() => {
+                const url = URL.createObjectURL(p.blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = p.outName;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+              }, idx * 180);
+            });
+            return;
+          }
+          if (!item.resultBlob) return;
           const url = URL.createObjectURL(item.resultBlob);
           const a = document.createElement('a');
           a.href = url;
@@ -1088,11 +1437,18 @@
           const container = document.getElementById('batch-items-container');
           const badge = document.getElementById('batch-count-badge');
           badge.textContent = `${appState.batchFiles.length} / ${MAX_BATCH_FILES}`;
-          
+
           container.innerHTML = appState.batchFiles.map((item, index) => {
-            const thumbHtml = item.thumbUrl 
+            const badgeColorMap = {
+              PDF: 'text-rose-400 border-rose-500/40 bg-rose-950/60',
+              WORD: 'text-blue-400 border-blue-500/40 bg-blue-950/60',
+              PPT: 'text-orange-400 border-orange-500/40 bg-orange-950/60',
+              HEIC: 'text-amber-400 border-amber-500/40 bg-slate-700'
+            };
+            const badgeCls = badgeColorMap[item.docType] || 'text-amber-400 border-slate-600 bg-slate-700';
+            const thumbHtml = item.thumbUrl
               ? `<img src="${item.thumbUrl}" class="w-10 h-10 rounded-lg object-cover bg-slate-800 shrink-0 border border-slate-600" alt="">`
-              : `<div class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-[10px] font-bold text-amber-400 shrink-0 border border-slate-600">HEIC</div>`;
+              : `<div class="w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-extrabold shrink-0 border ${badgeCls}">${item.docType || 'FILE'}</div>`;
 
             let statusBadge = '';
             let sizeInfo = `<span>${formatBytes(item.originalSize)}</span>`;
@@ -1104,10 +1460,10 @@
               statusBadge = `<span class="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-[11px] rounded-md animate-pulse">${t('status_processing')}</span>`;
             } else if (item.status === 'done') {
               statusBadge = `<span class="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-[11px] font-semibold rounded-md">${t('status_done')}</span>`;
-              const diffPercent = Math.round(((item.newSize - item.originalSize) / item.originalSize) * 100);
+              const diffPercent = item.originalSize > 0 ? Math.round(((item.newSize - item.originalSize) / item.originalSize) * 100) : 0;
               const diffColor = diffPercent <= 0 ? 'text-emerald-400' : 'text-amber-400';
               const sign = diffPercent > 0 ? '+' : '';
-              const dimBadge = item.dimensionsText ? `<span class="ml-2 px-1.5 py-0.2 bg-slate-700 text-slate-300 rounded text-[10px]">${item.dimensionsText}</span>` : '';
+              const dimBadge = item.dimensionsText ? `<span class="ml-1.5 px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded text-[10px]">${item.dimensionsText}</span>` : '';
               sizeInfo = `
                 <span class="line-through text-slate-500">${formatBytes(item.originalSize)}</span>
                 <span class="mx-1">→</span>
@@ -1116,7 +1472,7 @@
                 ${dimBadge}
               `;
               actionBtn = `
-                <button onclick="downloadSingleBatchItem('${item.id}')" title="下載此張" class="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition">
+                <button type="button" onclick="downloadSingleBatchItem('${item.id}')" title="下載" class="p-1.5 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                 </button>
               `;
@@ -1127,7 +1483,7 @@
             const isCropTool = appState.activeTool && appState.activeTool.id === 'crop';
             const isPreviewing = isCropTool && appState.previewCropItemId === item.id;
             const previewBtn = (isCropTool && item.thumbUrl)
-              ? `<button onclick="previewBatchCropItem('${item.id}')" title="在上方框中預覽比例" class="px-2 py-1 text-[11px] font-semibold rounded-lg transition ${isPreviewing ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}">預覽</button>`
+              ? `<button type="button" onclick="previewBatchCropItem('${item.id}')" class="px-2 py-1 text-[11px] font-semibold rounded-lg transition ${isPreviewing ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}">預覽</button>`
               : '';
 
             return `
@@ -1137,14 +1493,14 @@
                   ${thumbHtml}
                   <div class="min-w-0 flex-grow">
                     <p class="text-sm font-medium text-slate-100 truncate" title="${item.name}">${item.name}</p>
-                    <div class="text-xs text-slate-400 flex items-center mt-0.5">${sizeInfo}</div>
+                    <div class="text-xs text-slate-400 flex flex-wrap items-center mt-0.5">${sizeInfo}</div>
                   </div>
                 </div>
-                <div class="flex items-center space-x-2 ml-2 shrink-0">
+                <div class="flex items-center space-x-1.5 ml-2 shrink-0">
                   ${previewBtn}
                   ${statusBadge}
                   ${actionBtn}
-                  <button onclick="removeBatchItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-700 rounded-lg transition" ${appState.isProcessingBatch ? 'disabled' : ''}>
+                  <button type="button" onclick="removeBatchItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-700 rounded-lg transition" ${appState.isProcessingBatch ? 'disabled' : ''}>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                   </button>
                 </div>
@@ -1153,196 +1509,463 @@
           }).join('');
         }
 
-        // 初始化翻譯與網格
-        applyTranslations();
+        // =========================================================================
+        // 6. 三模式本機 AI 去背引擎 (Transformers.js RMBG-1.4 / MediaPipe / Color)
+        // =========================================================================
+        window.setRmbgMode = function(mode) {
+          appState.rmbgMode = mode;
+          const btnSmart = document.getElementById('btn-rmbg-mode-smart');
+          const btnFast = document.getElementById('btn-rmbg-mode-fast');
+          const btnColor = document.getElementById('btn-rmbg-mode-color');
+          const aiCtrl = document.getElementById('rmbg-ai-controls');
+          const colorCtrl = document.getElementById('rmbg-color-controls');
+          const hint = document.getElementById('rmbg-mode-hint');
+          const errBox = document.getElementById('ai-rmbg-error-box');
 
-        // 檔案上傳監聽 (支援批量與單張)
-        const fileInput = document.getElementById('file-input');
-        if (fileInput) {
-          fileInput.addEventListener('change', async (e) => {
-            if (!e.target.files || e.target.files.length === 0) return;
+          errBox.classList.add('hide');
 
-            if (BATCH_TOOLS.includes(appState.activeTool.id)) {
-              addFilesToBatch(e.target.files);
-              fileInput.value = ''; // 允許重複選取相同檔案
-              return;
-            }
+          const activeCls = 'py-2 px-1 rounded-lg text-[11px] font-bold bg-white text-slate-900 shadow-sm transition leading-tight ring-1 ring-slate-200';
+          const idleCls = 'py-2 px-1 rounded-lg text-[11px] font-semibold text-slate-600 hover:text-slate-800 transition leading-tight';
 
-            // 單張編輯工具模式
-            const file = e.target.files[0];
-            setLoading(true, "msg_reading");
+          btnSmart.className = mode === 'ai_smart' ? activeCls : idleCls;
+          btnFast.className = mode === 'ai_fast' ? activeCls : idleCls;
+          btnColor.className = mode === 'color' ? activeCls : idleCls;
 
-            try {
-              let imageBlob = file;
-              const fileName = file.name.toLowerCase();
-              if (file.type === 'image/heic' || file.type === 'image/heif' || fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
-                if (typeof heic2any !== 'undefined') {
-                  const convertedBlob = await heic2any({ blob: file, toType: "image/png" });
-                  imageBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-                }
-              }
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                  appState.originalImage = img;
-                  document.getElementById('preview-placeholder').classList.add('hide');
-                  document.getElementById('btn-download').disabled = false;
-                  setupSingleToolUI();
-                  setLoading(false);
-                };
-                img.src = event.target.result;
-              };
-              reader.readAsDataURL(imageBlob);
-            } catch (error) {
-              console.error("Error:", error);
-              showToast(t('msg_reading') + ' ' + error.message, 'error');
-              setLoading(false);
+          if (mode === 'color') {
+            aiCtrl.classList.add('hide');
+            colorCtrl.classList.remove('hide');
+            hint.textContent = t('rmbg_color_hint');
+          } else {
+            colorCtrl.classList.add('hide');
+            aiCtrl.classList.remove('hide');
+            hint.textContent = mode === 'ai_smart' ? t('rmbg_smart_hint') : t('rmbg_fast_hint');
+          }
+        };
+
+        window.setRmbgBg = function(color, isCustom = false) {
+          appState.rmbgBgColor = color;
+          document.querySelectorAll('.rmbg-bg-btn').forEach(btn => {
+            const key = btn.getAttribute('data-bg');
+            const active = isCustom ? (key === 'custom') : (key === color);
+            if (active) {
+              btn.className = 'rmbg-bg-btn py-1.5 rounded-lg text-xs font-bold border-2 border-blue-600 bg-blue-50 text-blue-700 transition text-center cursor-pointer relative overflow-hidden';
+            } else {
+              btn.className = 'rmbg-bg-btn py-1.5 rounded-lg text-xs font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition text-center cursor-pointer relative overflow-hidden';
             }
           });
+          if (appState.originalImage && appState.activeTool && appState.activeTool.id === 'removebg') {
+            renderRmbgComposite();
+          }
+        };
+
+        window.onRmbgFeatherChange = function(val) {
+          appState.rmbgFeather = parseInt(val, 10) || 0;
+          document.getElementById('rmbg-feather-val').textContent = appState.rmbgFeather;
+          if (appState.originalImage && appState.rmbgMaskCanvas) {
+            renderRmbgComposite();
+          }
+        };
+
+        window.setRmbgBrushTool = function(tool) {
+          appState.rmbgBrushTool = tool;
+          const sizeBox = document.getElementById('rmbg-brush-size-box');
+          if (sizeBox) {
+            if (tool === 'none') sizeBox.classList.add('hide');
+            else sizeBox.classList.remove('hide');
+          }
+          document.querySelectorAll('.rmbg-brush-btn').forEach(btn => {
+            const b = btn.getAttribute('data-brush');
+            if (b === tool) {
+              if (b === 'keep') btn.className = 'rmbg-brush-btn py-1.5 rounded-lg text-xs font-bold border-2 border-emerald-600 bg-emerald-600 text-white transition';
+              else if (b === 'erase') btn.className = 'rmbg-brush-btn py-1.5 rounded-lg text-xs font-bold border-2 border-rose-600 bg-rose-600 text-white transition';
+              else btn.className = 'rmbg-brush-btn py-1.5 rounded-lg text-xs font-bold border-2 border-slate-700 bg-slate-800 text-white transition';
+            } else {
+              const txtCls = b === 'keep' ? 'text-emerald-700 hover:bg-emerald-50' : (b === 'erase' ? 'text-rose-600 hover:bg-rose-50' : 'text-slate-600 hover:bg-slate-50');
+              btn.className = `rmbg-brush-btn py-1.5 rounded-lg text-xs font-semibold border border-slate-300 bg-white ${txtCls} transition`;
+            }
+          });
+          if (canvas) {
+            canvas.style.cursor = tool === 'none' ? 'default' : 'crosshair';
+            canvas.style.touchAction = tool === 'none' ? 'auto' : 'none';
+          }
+        };
+
+        window.resetRmbgMaskEdits = function() {
+          if (!appState.rmbgBaseMaskCanvas) return;
+          const c = document.createElement('canvas');
+          c.width = appState.rmbgBaseMaskCanvas.width;
+          c.height = appState.rmbgBaseMaskCanvas.height;
+          c.getContext('2d').drawImage(appState.rmbgBaseMaskCanvas, 0, 0);
+          appState.rmbgMaskCanvas = c;
+          renderRmbgComposite();
+          showToast('已還原手動筆刷微調', 'info');
+        };
+
+        window.toggleRmbgCompare = function(showOriginal) {
+          if (!appState.originalImage || !appState.rmbgMaskCanvas) return;
+          appState.rmbgIsComparing = showOriginal;
+          renderRmbgComposite();
+        };
+
+        // 合成主畫面（原圖 + 邊緣柔和遮罩 + 指定背景色）
+        function renderRmbgComposite() {
+          if (!appState.originalImage || !canvas || !ctx) return;
+          const w = appState.originalImage.width;
+          const h = appState.originalImage.height;
+          canvas.width = w;
+          canvas.height = h;
+          ctx.clearRect(0, 0, w, h);
+
+          if (!appState.rmbgMaskCanvas || appState.rmbgIsComparing) {
+            ctx.drawImage(appState.originalImage, 0, 0, w, h);
+            return;
+          }
+
+          const fgCanvas = document.createElement('canvas');
+          fgCanvas.width = w;
+          fgCanvas.height = h;
+          const fgCtx = fgCanvas.getContext('2d');
+
+          // 依 0-50 柔和度滑桿套用平滑羽化模糊
+          const blurPx = (appState.rmbgFeather / 50) * Math.max(2, Math.min(w, h) * 0.005);
+          if (blurPx > 0.15) {
+            fgCtx.filter = `blur(${blurPx.toFixed(2)}px)`;
+          }
+          fgCtx.drawImage(appState.rmbgMaskCanvas, 0, 0, w, h);
+          fgCtx.filter = 'none';
+
+          // 以 source-in 將原圖切入遮罩
+          fgCtx.globalCompositeOperation = 'source-in';
+          fgCtx.drawImage(appState.originalImage, 0, 0, w, h);
+          fgCtx.globalCompositeOperation = 'source-over';
+
+          if (appState.rmbgBgColor && appState.rmbgBgColor !== 'transparent') {
+            ctx.fillStyle = appState.rmbgBgColor;
+            ctx.fillRect(0, 0, w, h);
+          }
+
+          ctx.drawImage(fgCanvas, 0, 0, w, h);
+          fgCanvas.width = 0; fgCanvas.height = 0;
         }
 
-        // 批量佇列右上角「繼續新增圖片」按鈕
-        const batchAddInput = document.getElementById('batch-add-input');
-        if (batchAddInput) {
-          batchAddInput.addEventListener('change', (e) => {
-            if (e.target.files && e.target.files.length > 0) {
-              addFilesToBatch(e.target.files);
-              batchAddInput.value = '';
-            }
-          });
+        // 建立標準化遮罩並保存原始備份
+        function applyAlphaArrayToRmbgMask(w, h, alphaUint8Array) {
+          const maskCanvas = document.createElement('canvas');
+          maskCanvas.width = w;
+          maskCanvas.height = h;
+          const mCtx = maskCanvas.getContext('2d');
+          const imgData = mCtx.createImageData(w, h);
+          const d = imgData.data;
+
+          for (let i = 0; i < w * h; i++) {
+            const p = i * 4;
+            d[p] = 255;
+            d[p + 1] = 255;
+            d[p + 2] = 255;
+            d[p + 3] = alphaUint8Array[i];
+          }
+          mCtx.putImageData(imgData, 0, 0);
+
+          const baseCopy = document.createElement('canvas');
+          baseCopy.width = w;
+          baseCopy.height = h;
+          baseCopy.getContext('2d').drawImage(maskCanvas, 0, 0);
+
+          appState.rmbgBaseMaskCanvas = baseCopy;
+          appState.rmbgMaskCanvas = maskCanvas;
+          renderRmbgComposite();
         }
 
-        document.getElementById('btn-go-home').addEventListener('click', goHome);
-        document.getElementById('btn-back-home').addEventListener('click', goHome);
+        // 執行 AI 去背主入口（依模式呼叫 Transformers.js RMBG-1.4 或 MediaPipe）
+        window.runAiBackgroundRemoval = async function() {
+          if (!appState.originalImage) return showToast(t('msg_need_upload'), 'warning');
+          if (appState.rmbgIsRunning) return;
 
-        // 壓縮與轉換滑桿顯示更新
-        document.getElementById('compress-slider').addEventListener('input', (e) => {
-          document.getElementById('compress-val').textContent = Math.round(e.target.value * 100) + '%';
-        });
-        document.getElementById('convert-quality-slider').addEventListener('input', (e) => {
-          document.getElementById('convert-quality-val').textContent = Math.round(e.target.value * 100) + '%';
-        });
-        document.getElementById('resize-pct-slider').addEventListener('input', (e) => {
-          document.getElementById('resize-pct-val').textContent = e.target.value + '%';
-        });
+          appState.rmbgIsRunning = true;
+          const btn = document.getElementById('btn-run-ai-rmbg');
+          const progBox = document.getElementById('ai-rmbg-progress-box');
+          const progText = document.getElementById('ai-rmbg-progress-text');
+          const progPct = document.getElementById('ai-rmbg-progress-pct');
+          const progBar = document.getElementById('ai-rmbg-progress-bar');
+          const errBox = document.getElementById('ai-rmbg-error-box');
+          const errMsg = document.getElementById('ai-rmbg-error-msg');
 
-        // 調整大小模式切換
-        window.toggleResizeMode = function(mode) {
-          if (mode === 'percent') {
-            document.getElementById('resize-px-box').classList.add('hide');
-            document.getElementById('resize-pct-box').classList.remove('hide');
-          } else {
-            document.getElementById('resize-pct-box').classList.add('hide');
-            document.getElementById('resize-px-box').classList.remove('hide');
-          }
-        };
+          btn.disabled = true;
+          btn.classList.add('opacity-60');
+          errBox.classList.add('hide');
+          progBox.classList.remove('hide');
 
-        // 批量旋轉角度設定
-        window.setBatchRotate = function(deg) {
-          appState.batchRotateDeg = (appState.batchRotateDeg + deg) % 360;
-          const rotBadge = document.getElementById('rotate-angle-badge');
-          if (rotBadge) rotBadge.textContent = `${appState.batchRotateDeg}°`;
-        };
-
-        // 批量放大倍率設定
-        window.selectUpscaleFactor = function(factor) {
-          appState.batchUpscaleFactor = factor;
-          const badge = document.getElementById('upscale-badge');
-          if (badge) badge.textContent = `${factor}x`;
-          document.querySelectorAll('.upscale-opt').forEach(btn => {
-            btn.className = 'upscale-opt py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold hover:bg-slate-50 transition';
-          });
-          const activeBtn = document.getElementById(`btn-upscale-${factor}`);
-          if (activeBtn) {
-            activeBtn.className = 'upscale-opt py-2 bg-emerald-50 border-2 border-emerald-500 text-emerald-700 rounded-xl text-sm font-bold transition';
-          }
-        };
-
-        // 裁切 (支援單圖與 100 張批量比例同步)
-        window.changeCropRatio = function(val) {
-          const customBox = document.getElementById('crop-custom-box');
-          if (val === 'custom') {
-            if (customBox) customBox.classList.remove('hide');
-            const cw = parseFloat(document.getElementById('crop-custom-w').value) || 16;
-            const ch = parseFloat(document.getElementById('crop-custom-h').value) || 9;
-            appState.batchCropRatio = cw / ch;
-            if (appState.batchCropperInstance) {
-              appState.batchCropperInstance.setAspectRatio(NaN);
-            }
-          } else {
-            if (customBox) customBox.classList.add('hide');
-            const parsed = parseFloat(val);
-            appState.batchCropRatio = parsed;
-            if (appState.batchCropperInstance) {
-              appState.batchCropperInstance.setAspectRatio(parsed);
-            }
-          }
-          if (appState.cropperInstance) {
-            appState.cropperInstance.setAspectRatio(val === 'custom' ? NaN : parseFloat(val));
-          }
-        };
-
-        window.updateCustomCropRatio = function() {
-          const cw = parseFloat(document.getElementById('crop-custom-w').value);
-          const ch = parseFloat(document.getElementById('crop-custom-h').value);
-          if (cw > 0 && ch > 0) {
-            appState.batchCropRatio = cw / ch;
-            if (appState.batchCropperInstance) {
-              appState.batchCropperInstance.setAspectRatio(appState.batchCropRatio);
-            }
-          }
-        };
-        
-        window.applyCrop = function() {
-          if (!appState.cropperInstance) return;
-          const croppedCanvas = appState.cropperInstance.getCroppedCanvas();
-          const newImg = new Image();
-          newImg.onload = () => {
-            appState.originalImage = newImg;
-            showToast(t('msg_crop_success'), 'success');
+          const setProg = (pct, label) => {
+            const safePct = Math.min(100, Math.max(0, Math.round(pct)));
+            progPct.textContent = `${safePct}%`;
+            progBar.style.width = `${safePct}%`;
+            if (label) progText.textContent = label;
           };
-          newImg.src = croppedCanvas.toDataURL('image/png');
+
+          try {
+            const w = appState.originalImage.width;
+            const h = appState.originalImage.height;
+
+            // ---------------------------------------------------------
+            // 模式 1：智慧 AI (通用) - @xenova/transformers + briaai/RMBG-1.4
+            // ---------------------------------------------------------
+            if (appState.rmbgMode === 'ai_smart') {
+              setProg(5, '載入 Transformers.js 引擎...');
+
+              if (!appState.rmbgSmartCache) {
+                const { env, AutoModel, AutoProcessor, RawImage } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
+
+                // CRITICAL: 瀏覽器 / iframe / 沙盒相容性設定 (避免 SharedArrayBuffer 與 Worker CORS 錯誤)
+                env.allowLocalModels = false;
+                env.useBrowserCache = true;
+                env.backends.onnx.wasm.numThreads = 1;
+                env.backends.onnx.wasm.proxy = false;
+                env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/';
+
+                setProg(10, '下載 RMBG-1.4 模型中...');
+                const model = await AutoModel.from_pretrained('briaai/RMBG-1.4', {
+                  config: { model_type: 'custom' },
+                  progress_callback: (info) => {
+                    if (info.status === 'progress' && typeof info.progress === 'number') {
+                      const pct = 10 + info.progress * 0.72;
+                      setProg(pct, `下載 AI 模型 (${info.file || 'onnx'})...`);
+                    } else if (info.status === 'ready') {
+                      setProg(85, '模型就緒，載入處理器...');
+                    }
+                  }
+                });
+
+                const processor = await AutoProcessor.from_pretrained('briaai/RMBG-1.4', {
+                  config: {
+                    do_normalize: true,
+                    do_pad: false,
+                    do_rescale: true,
+                    do_resize: true,
+                    image_mean: [0.5, 0.5, 0.5],
+                    feature_extractor_type: 'ImageFeatureExtractor',
+                    image_std: [1, 1, 1],
+                    resample: 2,
+                    rescale_factor: 0.00392156862745098,
+                    size: { width: 1024, height: 1024 }
+                  }
+                });
+
+                appState.rmbgSmartCache = { model, processor, RawImage };
+              }
+
+              const { model, processor, RawImage } = appState.rmbgSmartCache;
+              setProg(88, 'AI 正在分析主體並計算遮罩...');
+
+              // 將目前原圖轉成 DataURL 交給 RawImage.fromURL
+              const srcCanvas = document.createElement('canvas');
+              srcCanvas.width = w;
+              srcCanvas.height = h;
+              srcCanvas.getContext('2d').drawImage(appState.originalImage, 0, 0);
+              const dataUrl = srcCanvas.toDataURL('image/png');
+              srcCanvas.width = 0; srcCanvas.height = 0;
+
+              // 讓出 UI 執行緒顯示進度
+              await new Promise(r => setTimeout(r, 30));
+
+              const image = await RawImage.fromURL(dataUrl);
+              const { pixel_values } = await processor(image);
+              const { output } = await model({ input: pixel_values });
+              const mask = await RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(image.width, image.height);
+
+              setProg(98, '套用透明去背遮罩...');
+              applyAlphaArrayToRmbgMask(w, h, mask.data);
+              setProg(100, 'AI 去背完成！');
+              showToast(t('msg_rmbg_success'), 'success');
+            }
+            // ---------------------------------------------------------
+            // 模式 2：快速 AI (僅人像) - @mediapipe/tasks-vision (~250KB)
+            // ---------------------------------------------------------
+            else if (appState.rmbgMode === 'ai_fast') {
+              setProg(15, '載入 MediaPipe 輕量人像引擎...');
+
+              if (!appState.rmbgFastSegmenter) {
+                const { FilesetResolver, ImageSegmenter } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/+esm');
+                setProg(40, '初始化 WASM 與人像模型 (~250KB)...');
+                const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+                appState.rmbgFastSegmenter = await ImageSegmenter.createFromOptions(vision, {
+                  baseOptions: {
+                    modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite',
+                    delegate: 'CPU'
+                  },
+                  runningMode: 'IMAGE',
+                  outputCategoryMask: false,
+                  outputConfidenceMasks: true
+                });
+              }
+
+              setProg(75, '正在極速辨識人像輪廓...');
+              await new Promise(r => setTimeout(r, 20));
+
+              const srcCanvas = document.createElement('canvas');
+              srcCanvas.width = w;
+              srcCanvas.height = h;
+              srcCanvas.getContext('2d').drawImage(appState.originalImage, 0, 0);
+
+              const result = appState.rmbgFastSegmenter.segment(srcCanvas);
+              srcCanvas.width = 0; srcCanvas.height = 0;
+
+              if (!result.confidenceMasks || result.confidenceMasks.length === 0) {
+                throw new Error('MediaPipe 未回傳有效的人像遮罩');
+              }
+
+              // selfie_segmenter 輸出：單一遮罩或 [背景, 人像]，取最後一張前景人像信心值
+              const maskObj = result.confidenceMasks.length > 1 ? result.confidenceMasks[1] : result.confidenceMasks[0];
+              const floatData = maskObj.getAsFloat32Array();
+              const alphaArr = new Uint8Array(w * h);
+              for (let i = 0; i < floatData.length && i < alphaArr.length; i++) {
+                // 平滑映射 0..1 至 0..255
+                alphaArr[i] = Math.max(0, Math.min(255, Math.round(floatData[i] * 255)));
+              }
+              if (typeof result.close === 'function') result.close();
+
+              setProg(98, '套用人像去背遮罩...');
+              applyAlphaArrayToRmbgMask(w, h, alphaArr);
+              setProg(100, '極速去背完成！');
+              showToast(t('msg_rmbg_success'), 'success');
+            }
+          } catch (err) {
+            console.error('AI RemoveBG Diagnostic Error:', err);
+            const detail = err && err.message ? err.message : String(err);
+            let reason = `AI 模型載入或運算失敗：${detail}。`;
+            if (detail.includes('Failed to fetch') || detail.includes('NetworkError') || detail.includes('404') || detail.includes('CORS')) {
+              reason = `無法連線至模型伺服器（可能是網路或防火牆阻擋 HuggingFace / CDN：${detail}）。建議切換至「快速 AI (僅人像)」或離線「色彩去背」。`;
+            } else if (window.location.protocol === 'file:') {
+              reason = `偵測到以本機 file:// 開啟，瀏覽器安全原則阻擋了 WASM 載入。請使用 HTTP/HTTPS 預覽，或直接切換至離線「色彩去背」。`;
+            }
+            errMsg.textContent = reason;
+            errBox.classList.remove('hide');
+            showToast('AI 去背失敗，請查看左側診斷建議', 'error');
+          } finally {
+            appState.rmbgIsRunning = false;
+            btn.disabled = false;
+            btn.classList.remove('opacity-60');
+            setTimeout(() => progBox.classList.add('hide'), 1600);
+          }
         };
 
-        // 去背
+        // 模式 3：色彩容差去背（100% 離線免模型）
         window.applyColorRemoval = function() {
-          if(!appState.originalImage) return showToast(t('msg_need_upload'), 'warning');
-          setLoading(true, "msg_processing");
-          
-          initCanvas(appState.originalImage);
-          
+          if (!appState.originalImage) return showToast(t('msg_need_upload'), 'warning');
+          setLoading(true, 'msg_processing');
+
           setTimeout(() => {
+            const w = appState.originalImage.width;
+            const h = appState.originalImage.height;
+            const tmp = document.createElement('canvas');
+            tmp.width = w;
+            tmp.height = h;
+            const tCtx = tmp.getContext('2d');
+            tCtx.drawImage(appState.originalImage, 0, 0, w, h);
+
             const colorHex = document.getElementById('removebg-color').value;
-            const tolerance = parseInt(document.getElementById('removebg-tolerance').value);
-            
-            const rTarget = parseInt(colorHex.slice(1,3), 16);
-            const gTarget = parseInt(colorHex.slice(3,5), 16);
-            const bTarget = parseInt(colorHex.slice(5,7), 16);
+            const tolerance = parseInt(document.getElementById('removebg-tolerance').value, 10);
+            const rTarget = parseInt(colorHex.slice(1, 3), 16);
+            const gTarget = parseInt(colorHex.slice(3, 5), 16);
+            const bTarget = parseInt(colorHex.slice(5, 7), 16);
 
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const imgData = tCtx.getImageData(0, 0, w, h);
             const data = imgData.data;
+            const alphaArr = new Uint8Array(w * h);
 
-            for (let i = 0; i < data.length; i += 4) {
-              const r = data[i], g = data[i+1], b = data[i+2];
-              const distance = Math.sqrt(
-                Math.pow(r - rTarget, 2) + Math.pow(g - gTarget, 2) + Math.pow(b - bTarget, 2)
-              );
-              if (distance <= tolerance) data[i+3] = 0; 
+            for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+              const dr = data[i] - rTarget;
+              const dg = data[i + 1] - gTarget;
+              const db = data[i + 2] - bTarget;
+              const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+              alphaArr[p] = distance <= tolerance ? 0 : 255;
+            }
+            tmp.width = 0; tmp.height = 0;
+
+            applyAlphaArrayToRmbgMask(w, h, alphaArr);
+            setLoading(false);
+            showToast(t('msg_rmbg_success'), 'success');
+          }, 50);
+        };
+
+        // 手動「＋保留 / －移除」微調筆刷事件 (同時支援滑鼠與觸控)
+        let isPaintingMask = false;
+        let lastBrushPt = null;
+
+        function getCanvasPointerPos(e) {
+          const rect = canvas.getBoundingClientRect();
+          const scaleX = canvas.width / rect.width;
+          const scaleY = canvas.height / rect.height;
+          return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY,
+            scale: Math.max(scaleX, scaleY)
+          };
+        }
+
+        function paintMaskStroke(fromPt, toPt) {
+          if (!appState.rmbgMaskCanvas) return;
+          const mCtx = appState.rmbgMaskCanvas.getContext('2d');
+          const uiSize = parseInt(document.getElementById('rmbg-brush-size').value, 10) || 28;
+          const brushWidth = uiSize * toPt.scale;
+
+          mCtx.save();
+          mCtx.lineCap = 'round';
+          mCtx.lineJoin = 'round';
+          mCtx.lineWidth = brushWidth;
+
+          if (appState.rmbgBrushTool === 'keep') {
+            mCtx.globalCompositeOperation = 'source-over';
+            mCtx.strokeStyle = 'rgba(255, 255, 255, 1)';
+          } else if (appState.rmbgBrushTool === 'erase') {
+            mCtx.globalCompositeOperation = 'destination-out';
+            mCtx.strokeStyle = 'rgba(0, 0, 0, 1)';
+          }
+
+          mCtx.beginPath();
+          mCtx.moveTo(fromPt.x, fromPt.y);
+          mCtx.lineTo(toPt.x, toPt.y);
+          mCtx.stroke();
+          mCtx.restore();
+          renderRmbgComposite();
+        }
+
+        if (canvas) {
+          canvas.addEventListener('pointerdown', (e) => {
+            if (!appState.activeTool || appState.activeTool.id !== 'removebg') return;
+            if (appState.rmbgBrushTool === 'none' || !appState.originalImage) return;
+
+            if (!appState.rmbgMaskCanvas) {
+              const w = appState.originalImage.width;
+              const h = appState.originalImage.height;
+              const fullAlpha = new Uint8Array(w * h).fill(255);
+              applyAlphaArrayToRmbgMask(w, h, fullAlpha);
             }
 
-            ctx.putImageData(imgData, 0, 0);
-            const newImg = new Image();
-            newImg.onload = () => {
-              appState.originalImage = newImg;
-              setLoading(false);
-              showToast(t('msg_rmbg_success'), 'success');
-            };
-            newImg.src = canvas.toDataURL('image/png');
-          }, 100);
-        };
+            isPaintingMask = true;
+            canvas.setPointerCapture(e.pointerId);
+            const pt = getCanvasPointerPos(e);
+            lastBrushPt = pt;
+            paintMaskStroke(pt, pt);
+          });
 
-        // --- 取得保留原圖格式的 MIME 與副檔名 ---
+          canvas.addEventListener('pointermove', (e) => {
+            if (!isPaintingMask || !lastBrushPt) return;
+            const pt = getCanvasPointerPos(e);
+            paintMaskStroke(lastBrushPt, pt);
+            lastBrushPt = pt;
+          });
+
+          const endBrush = () => {
+            isPaintingMask = false;
+            lastBrushPt = null;
+          };
+          canvas.addEventListener('pointerup', endBrush);
+          canvas.addEventListener('pointercancel', endBrush);
+        }
+
+        // =========================================================================
+        // 7. 文件 (PDF / Word / PPTX 原生設計) 與圖片批量處理核心引擎
+        // =========================================================================
         function getPreservedFormat(file) {
           const lower = file.name.toLowerCase();
           if (file.type === 'image/png' || lower.endsWith('.png')) return { mime: 'image/png', ext: 'png', quality: 1.0 };
@@ -1350,13 +1973,596 @@
           return { mime: 'image/jpeg', ext: 'jpg', quality: 0.92 };
         }
 
-        // --- 單張非同步批量處理核心函式 (支援轉換/壓縮/縮放/放大/旋轉/浮水印) ---
+        function wrapParagraphsToLines(paragraphs, maxCharsPerLine = 42) {
+          const allLines = [];
+          paragraphs.forEach(para => {
+            const clean = para.replace(/\r/g, '').trim();
+            if (!clean) { allLines.push(''); return; }
+            for (let i = 0; i < clean.length; i += maxCharsPerLine) {
+              allLines.push(clean.slice(i, i + maxCharsPerLine));
+            }
+          });
+          return allLines;
+        }
+
+        async function renderTextPagesToBlobs(pagesData, options) {
+          const scale = options.docScale || 2.0;
+          const pageW = Math.round(900 * (scale / 1.5));
+          const pageH = Math.round(1273 * (scale / 1.5));
+          const padding = Math.round(60 * (scale / 1.5));
+          const results = [];
+
+          for (let pIdx = 0; pIdx < pagesData.length; pIdx++) {
+            const page = pagesData[pIdx];
+            const c = document.createElement('canvas');
+            c.width = pageW;
+            c.height = pageH;
+            const cCtx = c.getContext('2d');
+
+            cCtx.fillStyle = '#ffffff';
+            cCtx.fillRect(0, 0, pageW, pageH);
+
+            let cursorY = padding + Math.round(24 * (scale / 1.5));
+            const maxTextW = pageW - padding * 2;
+
+            if (page.title) {
+              const titleFontSize = Math.round(26 * (scale / 1.5));
+              cCtx.font = `bold ${titleFontSize}px "Noto Sans TC", "Inter", sans-serif`;
+              cCtx.fillStyle = '#0f172a';
+              cCtx.fillText(page.title.slice(0, 45), padding, cursorY);
+              cursorY += Math.round(titleFontSize * 1.65);
+              cCtx.fillStyle = '#e2e8f0';
+              cCtx.fillRect(padding, cursorY - Math.round(titleFontSize * 0.55), maxTextW, 2);
+            }
+
+            const bodyFontSize = Math.round(18 * (scale / 1.5));
+            const lineHeight = Math.round(bodyFontSize * 1.55);
+            cCtx.font = `400 ${bodyFontSize}px "Noto Sans TC", "Inter", sans-serif`;
+            cCtx.fillStyle = '#334155';
+
+            for (const lineStr of (page.lines || [])) {
+              if (cursorY > pageH - padding * 1.3) break;
+              cCtx.fillText(lineStr, padding, cursorY);
+              cursorY += lineHeight;
+            }
+
+            if (page.images && page.images.length > 0) {
+              for (const imgObj of page.images) {
+                if (cursorY > pageH - padding * 2) break;
+                const availH = pageH - cursorY - padding;
+                const ratio = Math.min(maxTextW / imgObj.width, availH / imgObj.height, 1);
+                const drawW = Math.round(imgObj.width * ratio);
+                const drawH = Math.round(imgObj.height * ratio);
+                const drawX = padding + Math.round((maxTextW - drawW) / 2);
+                cCtx.drawImage(imgObj, drawX, cursorY + 8, drawW, drawH);
+                cursorY += drawH + 20;
+              }
+            }
+
+            const footerFontSize = Math.round(13 * (scale / 1.5));
+            cCtx.font = `500 ${footerFontSize}px sans-serif`;
+            cCtx.fillStyle = '#94a3b8';
+            cCtx.textAlign = 'right';
+            cCtx.fillText(`Page ${pIdx + 1} / ${pagesData.length}`, pageW - padding, pageH - Math.round(padding * 0.45));
+            cCtx.textAlign = 'left';
+
+            const blob = await new Promise(res => c.toBlob(res, options.targetMime, options.quality));
+            c.width = 0; c.height = 0;
+            results.push({ blob, width: pageW, height: pageH });
+          }
+          return results;
+        }
+
+        // PowerPoint (.pptx) OpenXML DrawingML 原生版面設計解析引擎
+        async function renderPptxWithOriginalDesign(arrayBuffer, options) {
+          const zip = await JSZip.loadAsync(arrayBuffer);
+          const parser = new DOMParser();
+          const scale = options.docScale || 2.0;
+
+          let slideW_Emu = 12192000;
+          let slideH_Emu = 6858000;
+          if (zip.file('ppt/presentation.xml')) {
+            const presStr = await zip.file('ppt/presentation.xml').async('text');
+            const presDoc = parser.parseFromString(presStr, 'application/xml');
+            const sldSz = presDoc.getElementsByTagName('p:sldSz')[0] || presDoc.getElementsByTagName('sldSz')[0];
+            if (sldSz) {
+              const cx = parseInt(sldSz.getAttribute('cx'), 10);
+              const cy = parseInt(sldSz.getAttribute('cy'), 10);
+              if (cx > 0 && cy > 0) { slideW_Emu = cx; slideH_Emu = cy; }
+            }
+          }
+
+          const baseWidthPx = Math.round(1280 * (scale / 1.5));
+          const pxPerEmu = baseWidthPx / slideW_Emu;
+          const canvasW = Math.round(slideW_Emu * pxPerEmu);
+          const canvasH = Math.round(slideH_Emu * pxPerEmu);
+
+          const themeColors = {
+            dk1: '#000000', lt1: '#FFFFFF', dk2: '#1F497D', lt2: '#EEECE1',
+            accent1: '#4F81BD', accent2: '#C0504D', accent3: '#9BBB59',
+            accent4: '#8064A2', accent5: '#4BACC6', accent6: '#F79646',
+            tx1: '#000000', tx2: '#1F497D', bg1: '#FFFFFF', bg2: '#EEECE1'
+          };
+          if (zip.file('ppt/theme/theme1.xml')) {
+            try {
+              const themeStr = await zip.file('ppt/theme/theme1.xml').async('text');
+              const themeDoc = parser.parseFromString(themeStr, 'application/xml');
+              const clrScheme = themeDoc.getElementsByTagName('a:clrScheme')[0];
+              if (clrScheme) {
+                Object.keys(themeColors).forEach(k => {
+                  const node = clrScheme.getElementsByTagName('a:' + k)[0];
+                  if (node) {
+                    const srgb = node.getElementsByTagName('a:srgbClr')[0];
+                    const sys = node.getElementsByTagName('a:sysClr')[0];
+                    if (srgb && srgb.getAttribute('val')) themeColors[k] = '#' + srgb.getAttribute('val');
+                    else if (sys && sys.getAttribute('lastClr')) themeColors[k] = '#' + sys.getAttribute('lastClr');
+                  }
+                });
+                themeColors.tx1 = themeColors.dk1;
+                themeColors.tx2 = themeColors.dk2;
+                themeColors.bg1 = themeColors.lt1;
+                themeColors.bg2 = themeColors.lt2;
+              }
+            } catch (e) {}
+          }
+
+          function resolveDrawingColor(parentNode, defaultColor = null) {
+            if (!parentNode) return defaultColor;
+            const srgb = parentNode.getElementsByTagName('a:srgbClr')[0];
+            if (srgb && srgb.getAttribute('val')) return '#' + srgb.getAttribute('val');
+            const scheme = parentNode.getElementsByTagName('a:schemeClr')[0];
+            if (scheme && scheme.getAttribute('val')) return themeColors[scheme.getAttribute('val')] || defaultColor;
+            return defaultColor;
+          }
+
+          const imageCache = {};
+          async function loadZipImage(zipPath) {
+            const cleanPath = zipPath.replace(/^\/+/, '');
+            if (imageCache[cleanPath]) return imageCache[cleanPath];
+            const f = zip.file(cleanPath);
+            if (!f) return null;
+            const blob = await f.async('blob');
+            const url = URL.createObjectURL(blob);
+            try {
+              const img = await new Promise((res, rej) => {
+                const el = new Image();
+                el.onload = () => res(el);
+                el.onerror = rej;
+                el.src = url;
+              });
+              imageCache[cleanPath] = img;
+              return img;
+            } catch (e) {
+              return null;
+            } finally {
+              URL.revokeObjectURL(url);
+            }
+          }
+
+          async function parseRelsMap(relsPath, baseDir = 'ppt/slides/') {
+            const map = {};
+            const relFile = zip.file(relsPath);
+            if (!relFile) return map;
+            const xmlStr = await relFile.async('text');
+            const relDoc = parser.parseFromString(xmlStr, 'application/xml');
+            Array.from(relDoc.getElementsByTagName('Relationship')).forEach(r => {
+              const id = r.getAttribute('Id');
+              let target = r.getAttribute('Target') || '';
+              if (target.startsWith('../')) target = 'ppt/' + target.replace(/^(\.\.\/)+/, '');
+              else if (!target.startsWith('ppt/')) target = baseDir + target;
+              map[id] = target;
+            });
+            return map;
+          }
+
+          async function drawSlideBackground(cCtx, xmlDoc, relsMap) {
+            const bgNode = xmlDoc.getElementsByTagName('p:bg')[0];
+            if (!bgNode) return false;
+            const blipFill = bgNode.getElementsByTagName('a:blipFill')[0];
+            if (blipFill) {
+              const blip = blipFill.getElementsByTagName('a:blip')[0];
+              const rId = blip ? (blip.getAttribute('r:embed') || blip.getAttribute('embed')) : null;
+              if (rId && relsMap[rId]) {
+                const bgImg = await loadZipImage(relsMap[rId]);
+                if (bgImg) { cCtx.drawImage(bgImg, 0, 0, canvasW, canvasH); return true; }
+              }
+            }
+            const solidFill = bgNode.getElementsByTagName('a:solidFill')[0];
+            if (solidFill) {
+              const clr = resolveDrawingColor(solidFill);
+              if (clr) { cCtx.fillStyle = clr; cCtx.fillRect(0, 0, canvasW, canvasH); return true; }
+            }
+            const gradFill = bgNode.getElementsByTagName('a:gradFill')[0];
+            if (gradFill) {
+              const gsList = Array.from(gradFill.getElementsByTagName('a:gs'));
+              if (gsList.length >= 2) {
+                const grad = cCtx.createLinearGradient(0, 0, canvasW, canvasH);
+                gsList.forEach((gs, idx) => {
+                  const pos = parseInt(gs.getAttribute('pos') || (idx * 100000), 10) / 100000;
+                  grad.addColorStop(Math.min(1, Math.max(0, pos)), resolveDrawingColor(gs, '#ffffff'));
+                });
+                cCtx.fillStyle = grad;
+                cCtx.fillRect(0, 0, canvasW, canvasH);
+                return true;
+              }
+            }
+            return false;
+          }
+
+          function getNodeBounds(node, groupTransform = null) {
+            const spPr = node.getElementsByTagName('p:spPr')[0] || node.getElementsByTagName('p:grpSpPr')[0];
+            let xfrm = spPr ? spPr.getElementsByTagName('a:xfrm')[0] : null;
+            if (!xfrm) xfrm = node.getElementsByTagName('a:xfrm')[0];
+            if (!xfrm) return null;
+            const off = xfrm.getElementsByTagName('a:off')[0];
+            const ext = xfrm.getElementsByTagName('a:ext')[0];
+            if (!off || !ext) return null;
+
+            let x = parseInt(off.getAttribute('x') || '0', 10);
+            let y = parseInt(off.getAttribute('y') || '0', 10);
+            let cx = parseInt(ext.getAttribute('cx') || '0', 10);
+            let cy = parseInt(ext.getAttribute('cy') || '0', 10);
+
+            if (groupTransform) {
+              const scaleX = groupTransform.w / (groupTransform.chW || 1);
+              const scaleY = groupTransform.h / (groupTransform.chH || 1);
+              x = groupTransform.x + (x - groupTransform.chX) * scaleX;
+              y = groupTransform.y + (y - groupTransform.chY) * scaleY;
+              cx *= scaleX;
+              cy *= scaleY;
+            }
+            const rotDeg = parseInt(xfrm.getAttribute('rot') || '0', 10) / 60000;
+            return { x: x * pxPerEmu, y: y * pxPerEmu, w: cx * pxPerEmu, h: cy * pxPerEmu, rotDeg };
+          }
+
+          function extractLayoutPlaceholders(layoutDoc) {
+            const phMap = {};
+            if (!layoutDoc) return phMap;
+            Array.from(layoutDoc.getElementsByTagName('p:sp')).forEach(sp => {
+              const ph = sp.getElementsByTagName('p:ph')[0];
+              if (ph) {
+                const type = ph.getAttribute('type') || 'body';
+                const idx = ph.getAttribute('idx') || '';
+                const b = getNodeBounds(sp);
+                if (b && b.w > 0 && b.h > 0) {
+                  phMap[`${type}_${idx}`] = b;
+                  if (!phMap[type]) phMap[type] = b;
+                }
+              }
+            });
+            return phMap;
+          }
+
+          function drawShapeTextBody(cCtx, spNode, bounds, isTitlePlaceholder = false) {
+            const txBody = spNode.getElementsByTagName('p:txBody')[0];
+            if (!txBody) return;
+            const paras = Array.from(txBody.getElementsByTagName('a:p'));
+            if (!paras.length) return;
+
+            const padX = Math.max(6, Math.round(bounds.w * 0.025));
+            const padY = Math.max(4, Math.round(bounds.h * 0.04));
+            const maxW = Math.max(20, bounds.w - padX * 2);
+            let cursorY = bounds.y + padY;
+
+            paras.forEach(p => {
+              const pPr = p.getElementsByTagName('a:pPr')[0];
+              const algn = pPr ? (pPr.getAttribute('algn') || 'l') : 'l';
+              const hasBullet = pPr && (pPr.getElementsByTagName('a:buChar')[0] || pPr.getElementsByTagName('a:buAutoNum')[0]);
+
+              const runs = [];
+              Array.from(p.childNodes).forEach(child => {
+                if (child.nodeName === 'a:r' || child.nodeName === 'a:fld') {
+                  const tNode = child.getElementsByTagName('a:t')[0];
+                  const text = tNode ? tNode.textContent : '';
+                  if (!text) return;
+                  const rPr = child.getElementsByTagName('a:rPr')[0];
+                  let szHundredths = rPr ? parseInt(rPr.getAttribute('sz') || '0', 10) : 0;
+                  if (!szHundredths) szHundredths = isTitlePlaceholder ? 3200 : 1800;
+                  const fontPx = Math.max(10, Math.round((szHundredths / 100) * 12700 * pxPerEmu));
+                  const isBold = rPr && (rPr.getAttribute('b') === '1' || rPr.getAttribute('b') === 'true');
+                  const solidFill = rPr ? rPr.getElementsByTagName('a:solidFill')[0] : null;
+                  const color = resolveDrawingColor(solidFill, '#0f172a');
+                  runs.push({ text, fontPx, isBold, color });
+                }
+              });
+
+              if (!runs.length) { cursorY += Math.round(14 * (scale / 1.5)); return; }
+              const domRun = runs[0];
+              const lineHeight = Math.round(domRun.fontPx * 1.32);
+              cCtx.font = `${domRun.isBold ? 'bold' : '400'} ${domRun.fontPx}px "Noto Sans TC", "Inter", sans-serif`;
+              cCtx.fillStyle = domRun.color;
+              cCtx.textBaseline = 'top';
+
+              const fullText = (hasBullet ? '• ' : '') + runs.map(r => r.text).join('');
+              const wrapped = [];
+              let cur = '';
+              for (let i = 0; i < fullText.length; i++) {
+                const test = cur + fullText[i];
+                if (cCtx.measureText(test).width > maxW && cur.length > 0) {
+                  wrapped.push(cur);
+                  cur = fullText[i];
+                } else {
+                  cur = test;
+                }
+              }
+              if (cur) wrapped.push(cur);
+
+              wrapped.forEach(lineStr => {
+                if (cursorY + domRun.fontPx > bounds.y + bounds.h + 12) return;
+                let drawX = bounds.x + padX;
+                if (algn === 'ctr') { cCtx.textAlign = 'center'; drawX = bounds.x + bounds.w / 2; }
+                else if (algn === 'r') { cCtx.textAlign = 'right'; drawX = bounds.x + bounds.w - padX; }
+                else { cCtx.textAlign = 'left'; }
+                cCtx.fillText(lineStr, drawX, cursorY);
+                cursorY += lineHeight;
+              });
+              cursorY += Math.round(domRun.fontPx * 0.25);
+            });
+            cCtx.textAlign = 'left';
+          }
+
+          async function renderShapeTree(cCtx, spTreeNode, relsMap, layoutPlaceholders, groupTransform = null, isLayoutLayer = false) {
+            if (!spTreeNode) return;
+            for (const node of Array.from(spTreeNode.childNodes)) {
+              const tag = node.nodeName;
+              if (tag === 'p:grpSp') {
+                const grpSpPr = node.getElementsByTagName('p:grpSpPr')[0];
+                const xfrm = grpSpPr ? grpSpPr.getElementsByTagName('a:xfrm')[0] : null;
+                let nextTransform = groupTransform;
+                if (xfrm) {
+                  const off = xfrm.getElementsByTagName('a:off')[0];
+                  const ext = xfrm.getElementsByTagName('a:ext')[0];
+                  const chOff = xfrm.getElementsByTagName('a:chOff')[0];
+                  const chExt = xfrm.getElementsByTagName('a:chExt')[0];
+                  if (off && ext && chOff && chExt) {
+                    nextTransform = {
+                      x: parseInt(off.getAttribute('x') || '0', 10),
+                      y: parseInt(off.getAttribute('y') || '0', 10),
+                      w: parseInt(ext.getAttribute('cx') || '1', 10),
+                      h: parseInt(ext.getAttribute('cy') || '1', 10),
+                      chX: parseInt(chOff.getAttribute('x') || '0', 10),
+                      chY: parseInt(chOff.getAttribute('y') || '0', 10),
+                      chW: parseInt(chExt.getAttribute('cx') || '1', 10),
+                      chH: parseInt(chExt.getAttribute('cy') || '1', 10)
+                    };
+                  }
+                }
+                await renderShapeTree(cCtx, node, relsMap, layoutPlaceholders, nextTransform, isLayoutLayer);
+              } else if (tag === 'p:pic') {
+                const bounds = getNodeBounds(node, groupTransform);
+                if (!bounds || bounds.w <= 0 || bounds.h <= 0) continue;
+                const blip = node.getElementsByTagName('a:blip')[0];
+                const rId = blip ? (blip.getAttribute('r:embed') || blip.getAttribute('embed')) : null;
+                if (rId && relsMap[rId]) {
+                  const imgObj = await loadZipImage(relsMap[rId]);
+                  if (imgObj) {
+                    cCtx.save();
+                    if (bounds.rotDeg) {
+                      cCtx.translate(bounds.x + bounds.w / 2, bounds.y + bounds.h / 2);
+                      cCtx.rotate((bounds.rotDeg * Math.PI) / 180);
+                      cCtx.drawImage(imgObj, -bounds.w / 2, -bounds.h / 2, bounds.w, bounds.h);
+                    } else {
+                      cCtx.drawImage(imgObj, bounds.x, bounds.y, bounds.w, bounds.h);
+                    }
+                    cCtx.restore();
+                  }
+                }
+              } else if (tag === 'p:sp') {
+                const ph = node.getElementsByTagName('p:ph')[0];
+                if (isLayoutLayer && ph) continue;
+
+                let bounds = getNodeBounds(node, groupTransform);
+                const phType = ph ? (ph.getAttribute('type') || 'body') : '';
+                const phIdx = ph ? (ph.getAttribute('idx') || '') : '';
+                if ((!bounds || bounds.w <= 0 || bounds.h <= 0) && ph) {
+                  bounds = layoutPlaceholders[`${phType}_${phIdx}`] || layoutPlaceholders[phType] || null;
+                }
+                if (!bounds || bounds.w <= 0 || bounds.h <= 0) {
+                  bounds = (phType === 'title' || phType === 'ctrTitle')
+                    ? { x: canvasW * 0.06, y: canvasH * 0.07, w: canvasW * 0.88, h: canvasH * 0.18, rotDeg: 0 }
+                    : { x: canvasW * 0.06, y: canvasH * 0.26, w: canvasW * 0.88, h: canvasH * 0.65, rotDeg: 0 };
+                }
+
+                const spPr = node.getElementsByTagName('p:spPr')[0];
+                if (spPr) {
+                  const noFill = spPr.getElementsByTagName('a:noFill')[0];
+                  if (!noFill) {
+                    const solidFill = Array.from(spPr.childNodes).find(n => n.nodeName === 'a:solidFill');
+                    const blipFill = Array.from(spPr.childNodes).find(n => n.nodeName === 'a:blipFill');
+                    if (blipFill) {
+                      const blip = blipFill.getElementsByTagName('a:blip')[0];
+                      const rId = blip ? (blip.getAttribute('r:embed') || blip.getAttribute('embed')) : null;
+                      if (rId && relsMap[rId]) {
+                        const fillImg = await loadZipImage(relsMap[rId]);
+                        if (fillImg) cCtx.drawImage(fillImg, bounds.x, bounds.y, bounds.w, bounds.h);
+                      }
+                    } else if (solidFill) {
+                      const fillColor = resolveDrawingColor(solidFill);
+                      if (fillColor) {
+                        cCtx.save();
+                        cCtx.fillStyle = fillColor;
+                        const prstGeom = spPr.getElementsByTagName('a:prstGeom')[0];
+                        const geomType = prstGeom ? prstGeom.getAttribute('prst') : 'rect';
+                        if (geomType === 'ellipse') {
+                          cCtx.beginPath();
+                          cCtx.ellipse(bounds.x + bounds.w / 2, bounds.y + bounds.h / 2, bounds.w / 2, bounds.h / 2, 0, 0, Math.PI * 2);
+                          cCtx.fill();
+                        } else if (geomType === 'roundRect' && cCtx.roundRect) {
+                          cCtx.beginPath();
+                          cCtx.roundRect(bounds.x, bounds.y, bounds.w, bounds.h, Math.min(bounds.w, bounds.h) * 0.08);
+                          cCtx.fill();
+                        } else {
+                          cCtx.fillRect(bounds.x, bounds.y, bounds.w, bounds.h);
+                        }
+                        cCtx.restore();
+                      }
+                    }
+                  }
+                  const ln = spPr.getElementsByTagName('a:ln')[0];
+                  if (ln && !ln.getElementsByTagName('a:noFill')[0]) {
+                    const strokeColor = resolveDrawingColor(ln.getElementsByTagName('a:solidFill')[0]);
+                    if (strokeColor) {
+                      const wEmu = parseInt(ln.getAttribute('w') || '12700', 10);
+                      cCtx.save();
+                      cCtx.strokeStyle = strokeColor;
+                      cCtx.lineWidth = Math.max(1, wEmu * pxPerEmu);
+                      cCtx.strokeRect(bounds.x, bounds.y, bounds.w, bounds.h);
+                      cCtx.restore();
+                    }
+                  }
+                }
+                drawShapeTextBody(cCtx, node, bounds, phType === 'title' || phType === 'ctrTitle');
+              }
+            }
+          }
+
+          const slideKeys = Object.keys(zip.files)
+            .filter(k => /^ppt\/slides\/slide\d+\.xml$/i.test(k))
+            .sort((a, b) => parseInt(a.match(/slide(\d+)\.xml/i)[1], 10) - parseInt(b.match(/slide(\d+)\.xml/i)[1], 10));
+
+          const pagesOutput = [];
+          for (let sIdx = 0; sIdx < slideKeys.length; sIdx++) {
+            const slideKey = slideKeys[sIdx];
+            const slideFileName = slideKey.split('/').pop();
+            const slideRelsMap = await parseRelsMap(`ppt/slides/_rels/${slideFileName}.rels`, 'ppt/slides/');
+            const slideDoc = parser.parseFromString(await zip.file(slideKey).async('text'), 'application/xml');
+
+            let layoutDoc = null, layoutRelsMap = {}, masterDoc = null, masterRelsMap = {};
+            const layoutTarget = Object.values(slideRelsMap).find(t => t.includes('slideLayouts/slideLayout'));
+            if (layoutTarget && zip.file(layoutTarget)) {
+              layoutDoc = parser.parseFromString(await zip.file(layoutTarget).async('text'), 'application/xml');
+              layoutRelsMap = await parseRelsMap(`ppt/slideLayouts/_rels/${layoutTarget.split('/').pop()}.rels`, 'ppt/slideLayouts/');
+              const masterTarget = Object.values(layoutRelsMap).find(t => t.includes('slideMasters/slideMaster'));
+              if (masterTarget && zip.file(masterTarget)) {
+                masterDoc = parser.parseFromString(await zip.file(masterTarget).async('text'), 'application/xml');
+                masterRelsMap = await parseRelsMap(`ppt/slideMasters/_rels/${masterTarget.split('/').pop()}.rels`, 'ppt/slideMasters/');
+              }
+            }
+
+            const layoutPlaceholders = {
+              ...(masterDoc ? extractLayoutPlaceholders(masterDoc) : {}),
+              ...(layoutDoc ? extractLayoutPlaceholders(layoutDoc) : {})
+            };
+
+            const c = document.createElement('canvas');
+            c.width = canvasW;
+            c.height = canvasH;
+            const cCtx = c.getContext('2d');
+            cCtx.imageSmoothingEnabled = true;
+            cCtx.imageSmoothingQuality = 'high';
+            cCtx.fillStyle = '#ffffff';
+            cCtx.fillRect(0, 0, canvasW, canvasH);
+
+            let bgDrawn = await drawSlideBackground(cCtx, slideDoc, slideRelsMap);
+            if (!bgDrawn && layoutDoc) bgDrawn = await drawSlideBackground(cCtx, layoutDoc, layoutRelsMap);
+            if (!bgDrawn && masterDoc) bgDrawn = await drawSlideBackground(cCtx, masterDoc, masterRelsMap);
+
+            if (masterDoc) await renderShapeTree(cCtx, masterDoc.getElementsByTagName('p:spTree')[0], masterRelsMap, layoutPlaceholders, null, true);
+            if (layoutDoc) await renderShapeTree(cCtx, layoutDoc.getElementsByTagName('p:spTree')[0], layoutRelsMap, layoutPlaceholders, null, true);
+            await renderShapeTree(cCtx, slideDoc.getElementsByTagName('p:spTree')[0], slideRelsMap, layoutPlaceholders, null, false);
+
+            const blob = await new Promise(res => c.toBlob(res, options.targetMime, options.quality));
+            c.width = 0; c.height = 0;
+            pagesOutput.push({ blob, pageNum: sIdx + 1 });
+          }
+
+          return {
+            pages: pagesOutput,
+            ext: options.ext,
+            dimensionsText: `${canvasW}×${canvasH} (${pagesOutput.length}頁)`
+          };
+        }
+
+        // 文件轉圖片分派器 (PDF / Word / PPT)
+        async function processDocumentForBatch(item, options) {
+          const arrayBuffer = await item.file.arrayBuffer();
+          const pagesOutput = [];
+
+          if (item.isPdf && typeof pdfjsLib !== 'undefined') {
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const totalPages = pdf.numPages;
+            const scale = options.docScale || 2.0;
+            let lastW = 0, lastH = 0;
+
+            for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+              const page = await pdf.getPage(pageNum);
+              const viewport = page.getViewport({ scale });
+              const c = document.createElement('canvas');
+              c.width = Math.round(viewport.width);
+              c.height = Math.round(viewport.height);
+              lastW = c.width; lastH = c.height;
+              const cCtx = c.getContext('2d');
+              cCtx.fillStyle = '#ffffff';
+              cCtx.fillRect(0, 0, c.width, c.height);
+              await page.render({ canvasContext: cCtx, viewport }).promise;
+              const blob = await new Promise(r => c.toBlob(r, options.targetMime, options.quality));
+              c.width = 0; c.height = 0;
+              pagesOutput.push({ blob, pageNum });
+            }
+            return { pages: pagesOutput, ext: options.ext, dimensionsText: `${lastW}×${lastH} (${totalPages}頁)` };
+          }
+
+          if (item.isWord) {
+            let rawText = '';
+            const embeddedImages = [];
+            if (typeof mammoth !== 'undefined') {
+              try {
+                const textRes = await mammoth.extractRawText({ arrayBuffer });
+                rawText = textRes.value || '';
+              } catch (e) {}
+            }
+            if (typeof JSZip !== 'undefined') {
+              try {
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                if (!rawText && zip.file('word/document.xml')) {
+                  const xmlDoc = new DOMParser().parseFromString(await zip.file('word/document.xml').async('text'), 'application/xml');
+                  rawText = Array.from(xmlDoc.getElementsByTagName('w:t')).map(n => n.textContent).join(' ');
+                }
+                const mediaFiles = Object.keys(zip.files).filter(k => k.startsWith('word/media/') && /\.(png|jpe?g|webp|gif)$/i.test(k));
+                for (const mKey of mediaFiles.slice(0, 6)) {
+                  const imgBlob = await zip.file(mKey).async('blob');
+                  const url = URL.createObjectURL(imgBlob);
+                  try {
+                    const imgEl = await new Promise((res, rej) => {
+                      const im = new Image();
+                      im.onload = () => res(im);
+                      im.onerror = rej;
+                      im.src = url;
+                    });
+                    embeddedImages.push(imgEl);
+                  } catch (e) {} finally { URL.revokeObjectURL(url); }
+                }
+              } catch (e) {}
+            }
+            const allLines = wrapParagraphsToLines((rawText || item.file.name).split(/\n+/), 40);
+            const pagesData = [];
+            for (let i = 0; i < Math.max(1, allLines.length); i += 32) {
+              pagesData.push({
+                title: i === 0 ? item.file.name.replace(/\.[^/.]+$/, '') : '',
+                lines: allLines.slice(i, i + 32),
+                images: i === 0 ? embeddedImages.slice(0, 2) : []
+              });
+            }
+            const rendered = await renderTextPagesToBlobs(pagesData, options);
+            rendered.forEach((r, idx) => pagesOutput.push({ blob: r.blob, pageNum: idx + 1 }));
+            const first = rendered[0] || { width: 1200, height: 1697 };
+            return { pages: pagesOutput, ext: options.ext, dimensionsText: `${first.width}×${first.height} (${pagesOutput.length}頁)` };
+          }
+
+          if (item.isPpt && typeof JSZip !== 'undefined') {
+            return await renderPptxWithOriginalDesign(arrayBuffer, options);
+          }
+
+          throw new Error('Unsupported document format');
+        }
+
+        // 單張圖片批量處理核心
         async function processSingleFileForBatch(file, toolId, options) {
           let imageBlob = file;
           const lowerName = file.name.toLowerCase();
           if (file.type === 'image/heic' || file.type === 'image/heif' || lowerName.endsWith('.heic') || lowerName.endsWith('.heif')) {
             if (typeof heic2any !== 'undefined') {
-              const converted = await heic2any({ blob: file, toType: "image/png" });
+              const converted = await heic2any({ blob: file, toType: 'image/png' });
               imageBlob = Array.isArray(converted) ? converted[0] : converted;
             }
           }
@@ -1376,7 +2582,6 @@
             let quality = options.quality;
             let ext = options.ext;
 
-            // 若非格式轉換或壓縮工具，自動保留原圖格式避免容量暴增
             if (toolId !== 'convert' && toolId !== 'compress') {
               const preserved = getPreservedFormat(file);
               targetMime = preserved.mime;
@@ -1391,157 +2596,106 @@
               const targetRatio = options.cropRatio > 0 ? options.cropRatio : 1;
               const imgRatio = img.width / img.height;
               let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
-
               if (imgRatio > targetRatio) {
-                // 原圖較寬，裁切左右兩側
                 sWidth = Math.max(1, Math.round(img.height * targetRatio));
                 if (options.cropAnchor === 'top') sx = 0;
                 else if (options.cropAnchor === 'bottom') sx = img.width - sWidth;
                 else sx = Math.round((img.width - sWidth) / 2);
               } else if (imgRatio < targetRatio) {
-                // 原圖較高，裁切上下兩端
                 sHeight = Math.max(1, Math.round(img.width / targetRatio));
                 if (options.cropAnchor === 'top') sy = 0;
                 else if (options.cropAnchor === 'bottom') sy = img.height - sHeight;
                 else sy = Math.round((img.height - sHeight) / 2);
               }
-
-              outW = sWidth;
-              outH = sHeight;
-              offCanvas.width = outW;
-              offCanvas.height = outH;
+              outW = sWidth; outH = sHeight;
+              offCanvas.width = outW; offCanvas.height = outH;
               if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
-                offCtx.fillStyle = '#ffffff';
-                offCtx.fillRect(0, 0, outW, outH);
+                offCtx.fillStyle = '#ffffff'; offCtx.fillRect(0, 0, outW, outH);
               }
               offCtx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, outW, outH);
-            }
-            else if (toolId === 'resize') {
+            } else if (toolId === 'resize') {
               if (options.resizeMode === 'percent') {
                 const scale = options.resizePct / 100;
                 outW = Math.max(1, Math.round(img.width * scale));
                 outH = Math.max(1, Math.round(img.height * scale));
               } else {
                 outW = Math.max(1, options.resizeW);
-                if (options.resizeAspect) {
-                  const ratio = img.height / img.width;
-                  outH = Math.max(1, Math.round(outW * ratio));
-                } else {
-                  outH = Math.max(1, options.resizeH);
-                }
+                outH = options.resizeAspect ? Math.max(1, Math.round(outW * (img.height / img.width))) : Math.max(1, options.resizeH);
               }
-              offCanvas.width = outW;
-              offCanvas.height = outH;
+              offCanvas.width = outW; offCanvas.height = outH;
               if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
-                offCtx.fillStyle = '#ffffff';
-                offCtx.fillRect(0, 0, outW, outH);
+                offCtx.fillStyle = '#ffffff'; offCtx.fillRect(0, 0, outW, outH);
               }
               offCtx.imageSmoothingEnabled = true;
               offCtx.imageSmoothingQuality = 'high';
               offCtx.drawImage(img, 0, 0, outW, outH);
-            } 
-            else if (toolId === 'upscale') {
+            } else if (toolId === 'upscale') {
               outW = Math.round(img.width * options.upscaleFactor);
               outH = Math.round(img.height * options.upscaleFactor);
-              offCanvas.width = outW;
-              offCanvas.height = outH;
+              offCanvas.width = outW; offCanvas.height = outH;
               if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
-                offCtx.fillStyle = '#ffffff';
-                offCtx.fillRect(0, 0, outW, outH);
+                offCtx.fillStyle = '#ffffff'; offCtx.fillRect(0, 0, outW, outH);
               }
               offCtx.imageSmoothingEnabled = true;
               offCtx.imageSmoothingQuality = 'high';
               offCtx.drawImage(img, 0, 0, outW, outH);
-            } 
-            else if (toolId === 'rotate') {
+            } else if (toolId === 'rotate') {
               const rad = (options.rotateDeg * Math.PI) / 180;
-              const sin = Math.abs(Math.sin(rad));
-              const cos = Math.abs(Math.cos(rad));
+              const sin = Math.abs(Math.sin(rad)), cos = Math.abs(Math.cos(rad));
               outW = Math.round(img.width * cos + img.height * sin);
               outH = Math.round(img.width * sin + img.height * cos);
-              offCanvas.width = outW;
-              offCanvas.height = outH;
+              offCanvas.width = outW; offCanvas.height = outH;
               if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
-                offCtx.fillStyle = '#ffffff';
-                offCtx.fillRect(0, 0, outW, outH);
+                offCtx.fillStyle = '#ffffff'; offCtx.fillRect(0, 0, outW, outH);
               }
               offCtx.translate(outW / 2, outH / 2);
               offCtx.rotate(rad);
               offCtx.drawImage(img, -img.width / 2, -img.height / 2);
-            } 
-            else if (toolId === 'watermark') {
-              offCanvas.width = outW;
-              offCanvas.height = outH;
+            } else if (toolId === 'watermark') {
+              offCanvas.width = outW; offCanvas.height = outH;
               if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
-                offCtx.fillStyle = '#ffffff';
-                offCtx.fillRect(0, 0, outW, outH);
+                offCtx.fillStyle = '#ffffff'; offCtx.fillRect(0, 0, outW, outH);
               }
               offCtx.drawImage(img, 0, 0, outW, outH);
-
               if (options.wmText.trim()) {
                 const hex = options.wmColor;
-                const r = parseInt(hex.slice(1, 3), 16);
-                const g = parseInt(hex.slice(3, 5), 16);
-                const b = parseInt(hex.slice(5, 7), 16);
+                const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
                 offCtx.fillStyle = `rgba(${r}, ${g}, ${b}, ${options.wmAlpha})`;
                 const fontSize = Math.max(20, Math.round(outW * 0.045));
                 const padding = Math.max(16, Math.round(outW * 0.025));
                 offCtx.font = `bold ${fontSize}px sans-serif`;
-
-                let x = outW - padding;
-                let y = outH - padding;
-                offCtx.textAlign = 'right';
-                offCtx.textBaseline = 'bottom';
-
-                if (options.wmPos === 'bottom-left') {
-                  x = padding; y = outH - padding;
-                  offCtx.textAlign = 'left'; offCtx.textBaseline = 'bottom';
-                } else if (options.wmPos === 'top-right') {
-                  x = outW - padding; y = padding;
-                  offCtx.textAlign = 'right'; offCtx.textBaseline = 'top';
-                } else if (options.wmPos === 'top-left') {
-                  x = padding; y = padding;
-                  offCtx.textAlign = 'left'; offCtx.textBaseline = 'top';
-                } else if (options.wmPos === 'center') {
-                  x = outW / 2; y = outH / 2;
-                  offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle';
-                }
+                let x = outW - padding, y = outH - padding;
+                offCtx.textAlign = 'right'; offCtx.textBaseline = 'bottom';
+                if (options.wmPos === 'bottom-left') { x = padding; offCtx.textAlign = 'left'; }
+                else if (options.wmPos === 'top-right') { y = padding; offCtx.textBaseline = 'top'; }
+                else if (options.wmPos === 'top-left') { x = padding; y = padding; offCtx.textAlign = 'left'; offCtx.textBaseline = 'top'; }
+                else if (options.wmPos === 'center') { x = outW / 2; y = outH / 2; offCtx.textAlign = 'center'; offCtx.textBaseline = 'middle'; }
                 offCtx.fillText(options.wmText, x, y);
               }
-            } 
-            else {
-              // convert / compress
-              offCanvas.width = outW;
-              offCanvas.height = outH;
+            } else {
+              offCanvas.width = outW; offCanvas.height = outH;
               if (targetMime === 'image/jpeg' || targetMime === 'image/bmp') {
-                offCtx.fillStyle = '#ffffff';
-                offCtx.fillRect(0, 0, outW, outH);
+                offCtx.fillStyle = '#ffffff'; offCtx.fillRect(0, 0, outW, outH);
               }
               offCtx.drawImage(img, 0, 0, outW, outH);
             }
 
-            const blob = await new Promise((resolve) => {
-              offCanvas.toBlob((b) => resolve(b), targetMime, quality);
-            });
-
-            // 清理離屏畫布釋放記憶體
-            offCanvas.width = 0;
-            offCanvas.height = 0;
-
+            const blob = await new Promise(resolve => offCanvas.toBlob(resolve, targetMime, quality));
+            offCanvas.width = 0; offCanvas.height = 0;
             return { blob, ext, dimensionsText: `${outW}×${outH}` };
           } finally {
             URL.revokeObjectURL(objectUrl);
           }
         }
 
-        // --- 批量執行與逐張下載 ---
+        // 執行批量處理並依模式下載 (直接逐張 / 打包 ZIP)
         async function processAndDownloadBatch() {
           if (appState.batchFiles.length === 0 || appState.isProcessingBatch) return;
 
           const toolId = appState.activeTool.id;
           const resizeMode = document.getElementById('resize-mode').value;
-          const resizeW = parseInt(document.getElementById('resize-w').value);
-          const resizeH = parseInt(document.getElementById('resize-h').value);
+          const resizeW = parseInt(document.getElementById('resize-w').value, 10);
+          const resizeH = parseInt(document.getElementById('resize-h').value, 10);
           if (toolId === 'resize' && resizeMode === 'pixels' && (!(resizeW > 0) || !(resizeH > 0))) {
             showToast(t('msg_resize_err'), 'error');
             return;
@@ -1560,18 +2714,18 @@
           document.getElementById('settings-panel').classList.add('opacity-50', 'pointer-events-none');
           progressContainer.classList.remove('hide');
 
-          // 彙整工具設定參數
           const options = {
             targetMime: 'image/jpeg',
             quality: 0.85,
             ext: 'jpg',
+            docScale: parseFloat(document.getElementById('doc-scale-select').value) || 2.0,
             cropRatio: appState.batchCropRatio,
             cropAnchor: document.getElementById('crop-anchor').value,
-            resizeMode: resizeMode,
-            resizeW: resizeW,
-            resizeH: resizeH,
+            resizeMode,
+            resizeW,
+            resizeH,
             resizeAspect: document.getElementById('resize-aspect').checked,
-            resizePct: parseInt(document.getElementById('resize-pct-slider').value),
+            resizePct: parseInt(document.getElementById('resize-pct-slider').value, 10),
             upscaleFactor: appState.batchUpscaleFactor,
             rotateDeg: appState.batchRotateDeg,
             wmText: document.getElementById('wm-text').value,
@@ -1599,34 +2753,46 @@
           for (let i = 0; i < total; i++) {
             const item = appState.batchFiles[i];
             item.status = 'processing';
+            item.resultPages = [];
             renderBatchList();
 
             const pct = Math.round((i / total) * 100);
             progressBar.style.width = `${pct}%`;
             progressLabel.textContent = `${t('status_processing')} (${i + 1}/${total})`;
             progressPercent.textContent = `${pct}%`;
-
-            // 讓出主執行緒一點時間更新 UI，避免處理 100 張時畫面卡死
             await new Promise(r => setTimeout(r, 15));
 
             try {
-              const res = await processSingleFileForBatch(item.file, toolId, options);
-              
-              // 處理檔名重複問題
-              const baseName = item.name.replace(/\.[^/.]+$/, "");
-              let finalName = `${baseName}.${res.ext}`;
-              let counter = 1;
-              while (usedNames.has(finalName)) {
-                finalName = `${baseName}_${counter}.${res.ext}`;
-                counter++;
+              const baseName = item.name.replace(/\.[^/.]+$/, '');
+              if (item.isPdf || item.isWord || item.isPpt) {
+                const docRes = await processDocumentForBatch(item, options);
+                let totalBytes = 0;
+                docRes.pages.forEach(p => {
+                  const suffix = docRes.pages.length > 1 ? `_page${p.pageNum}` : '';
+                  let pageName = `${baseName}${suffix}.${docRes.ext}`;
+                  let counter = 1;
+                  while (usedNames.has(pageName)) { pageName = `${baseName}${suffix}_${counter}.${docRes.ext}`; counter++; }
+                  usedNames.add(pageName);
+                  totalBytes += p.blob.size;
+                  item.resultPages.push({ blob: p.blob, outName: pageName });
+                });
+                item.resultBlob = item.resultPages[0] ? item.resultPages[0].blob : null;
+                item.outName = item.resultPages[0] ? item.resultPages[0].outName : `${baseName}.${docRes.ext}`;
+                item.newSize = totalBytes;
+                item.dimensionsText = docRes.dimensionsText;
+                item.status = 'done';
+              } else {
+                const res = await processSingleFileForBatch(item.file, toolId, options);
+                let finalName = `${baseName}.${res.ext}`;
+                let counter = 1;
+                while (usedNames.has(finalName)) { finalName = `${baseName}_${counter}.${res.ext}`; counter++; }
+                usedNames.add(finalName);
+                item.resultBlob = res.blob;
+                item.newSize = res.blob.size;
+                item.dimensionsText = res.dimensionsText;
+                item.outName = finalName;
+                item.status = 'done';
               }
-              usedNames.add(finalName);
-
-              item.resultBlob = res.blob;
-              item.newSize = res.blob.size;
-              item.dimensionsText = res.dimensionsText;
-              item.outName = finalName;
-              item.status = 'done';
             } catch (err) {
               console.error(`Failed processing ${item.name}:`, err);
               item.status = 'error';
@@ -1637,36 +2803,46 @@
           progressPercent.textContent = '100%';
           renderBatchList();
 
-          // 根據使用者選擇的模式下載：打包 ZIP 或直接逐張下載
-          const completedItems = appState.batchFiles.filter(item => item.status === 'done' && item.resultBlob);
-          
+          const completedItems = appState.batchFiles.filter(item => item.status === 'done' && (item.resultBlob || (item.resultPages && item.resultPages.length > 0)));
           if (completedItems.length > 0) {
             if (appState.batchDownloadMode === 'zip' && typeof JSZip !== 'undefined') {
               progressLabel.textContent = t('msg_packing_zip');
               const zip = new JSZip();
               completedItems.forEach(item => {
-                zip.file(item.outName, item.resultBlob);
+                if (item.resultPages && item.resultPages.length > 0) {
+                  item.resultPages.forEach(p => zip.file(p.outName, p.blob));
+                } else if (item.resultBlob) {
+                  zip.file(item.outName, item.resultBlob);
+                }
               });
               const zipBlob = await zip.generateAsync({ type: 'blob' });
               const zipUrl = URL.createObjectURL(zipBlob);
               const a = document.createElement('a');
               a.href = zipUrl;
-              a.download = `imgtools_${toolId}_${completedItems.length}_images.zip`;
+              a.download = `imgtools_${toolId}_batch.zip`;
               a.click();
               setTimeout(() => URL.revokeObjectURL(zipUrl), 2000);
               showToast(t('msg_batch_zip_done'), 'success');
             } else {
               progressLabel.textContent = t('msg_downloading_files');
               for (let i = 0; i < completedItems.length; i++) {
-                downloadSingleBatchItem(completedItems[i].id);
-                // 間隔短暫時間觸發瀏覽器下載，避免瀏覽器同時攔截過多下載請求
-                if (completedItems.length > 1) {
-                  await new Promise(r => setTimeout(r, 150));
+                const item = completedItems[i];
+                if (item.resultPages && item.resultPages.length > 0) {
+                  for (const p of item.resultPages) {
+                    const url = URL.createObjectURL(p.blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = p.outName;
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                    await new Promise(r => setTimeout(r, 160));
+                  }
+                } else {
+                  downloadSingleBatchItem(item.id);
+                  if (completedItems.length > 1) await new Promise(r => setTimeout(r, 150));
                 }
               }
-              if (completedItems.length > 1) {
-                showToast(t('msg_batch_done'), 'success');
-              }
+              showToast(t('msg_batch_done'), 'success');
             }
           }
 
@@ -1677,46 +2853,31 @@
           setTimeout(() => progressContainer.classList.add('hide'), 2000);
         }
 
-        // --- 統一處理下載按鈕點擊 ---
+        // 統一下載按鈕處理
         window.handleDownloadAction = function() {
+          if (!appState.activeTool) return;
           if (BATCH_TOOLS.includes(appState.activeTool.id)) {
             processAndDownloadBatch();
             return;
           }
 
-          // 單圖模式下載
-          if(!appState.originalImage) return;
+          if (!appState.originalImage) return showToast(t('msg_need_upload'), 'warning');
+          // 確保匯出時為最終合成畫面（非原圖對照狀態）
+          appState.rmbgIsComparing = false;
+          renderRmbgComposite();
 
-          let exportCanvas = canvas;
-          if (appState.activeTool.id === 'crop' && appState.cropperInstance) {
-            exportCanvas = appState.cropperInstance.getCroppedCanvas();
-          }
-
-          let format = 'image/png';
-          let quality = 1.0;
-          let ext = 'png';
-
-          if (appState.activeTool.id === 'removebg') {
-            format = 'image/png';
-            ext = 'png';
-          } else {
-            const file = document.getElementById('file-input').files[0];
-            if(file && (file.type === 'image/jpeg' || file.name.toLowerCase().endsWith('.jpg'))) {
-              format = 'image/jpeg';
-              ext = 'jpg';
-              quality = 0.95;
-            }
-          }
-
-          const dataUrl = exportCanvas.toDataURL(format, quality);
+          const dataUrl = canvas.toDataURL('image/png', 1.0);
           const link = document.createElement('a');
-          link.download = `imgtool_${appState.activeTool.id}_processed.${ext}`;
+          link.download = `imgtools_ai_removed_bg.png`;
           link.href = dataUrl;
           link.click();
+          showToast('✅ 已開始下載 PNG 圖片', 'success');
         };
 
+        // 啟動初始翻譯與工具卡片渲染
+        applyTranslations();
       } catch (err) {
-        console.error("Initialization Error:", err);
+        console.error('Initialization Error:', err);
       }
     });
   </script>
